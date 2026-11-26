@@ -1,0 +1,191 @@
+/* OEM Solicitudes. Back-office sobrio: tinta negra, superficies blancas y un solo acento amarillo de cable eléctrico. */
+
+:root {
+  /* Colores base */
+  --color-fondo: #f8f9fa;
+  --color-superficie: #ffffff;
+  --color-superficie-alt: #f1f3f5;
+  --color-texto: #111111;
+  --color-texto-secundario: #555555;
+  --color-texto-suave: #6b6b6b; /* #767676 no llega a 4.5:1 sobre --color-fondo */
+  --color-borde: #d0d5dd;
+  --color-borde-fuerte: #111111;
+  --color-borde-control: #7a7f87; /* 3:1 contra blanco para bordes de campos */
+  --color-primario: #111111;
+  --color-primario-hover: #2b2b2b;
+  --color-primario-texto: #ffffff;
+
+  /* Acento: el amarillo de cable, solo en marcadores de identidad y de estado activo */
+  --color-acento: #f2b705;
+  --color-acento-tinte: #fff6d6;
+  --color-foco: #111111;
+
+  /* Semánticos y estados */
+  --color-peligro: #b42318;
+  --color-peligro-hover: #912018;
+  --color-peligro-fondo: #fef3f2;
+  --color-exito: #067647;
+  --color-exito-fondo: #ecfdf3;
+  --color-aviso: #b54708;
+  --color-aviso-fondo: #fffaeb;
+  --color-info: #175cd3;
+  --color-info-fondo: #eff8ff;
+  --color-violeta: #5925dc;
+  --color-violeta-fondo: #f4f3ff;
+
+  /* Tipografía */
+  --fuente-base: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --fuente-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --texto-xs: 0.75rem;
+  --texto-sm: 0.875rem;
+  --texto-base: 1rem;
+  --texto-lg: 1.125rem;
+  --texto-xl: 1.375rem;
+  --texto-2xl: 1.75rem;
+  --texto-3xl: 2.25rem;
+
+  /* Espaciado */
+  --espacio-1: 0.25rem;
+  --espacio-2: 0.5rem;
+  --espacio-3: 0.75rem;
+  --espacio-4: 1rem;
+  --espacio-5: 1.25rem;
+  --espacio-6: 1.5rem;
+  --espacio-8: 2rem;
+  --espacio-10: 2.5rem;
+  --espacio-12: 3rem;
+
+  /* Bordes y sombras */
+  --radio-sm: 4px;
+  --radio-md: 6px;
+  --radio-lg: 8px;
+  --sombra-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
+  --sombra-md: 0 4px 12px rgba(16, 24, 40, 0.10);
+  --ancho-max: 1200px;
+
+  --alto-control: 2.75rem;
+  --transicion: 120ms ease;
+}
+
+/* Base */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-fondo);
+  color: var(--color-texto);
+  font-family: var(--fuente-base);
+  font-size: var(--texto-base);
+  line-height: 1.55;
+  overflow-wrap: break-word;
+}
+
+img,
+svg,
+canvas {
+  max-width: 100%;
+}
+
+img {
+  display: block;
+  height: auto;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  margin: 0 0 var(--espacio-2);
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+h1 { font-size: var(--texto-2xl); }
+h2 { font-size: var(--texto-xl); }
+h3 { font-size: var(--texto-lg); }
+
+p {
+  margin: 0 0 var(--espacio-4);
+}
+
+a {
+  color: inherit;
+  text-underline-offset: 0.18em;
+}
+
+a:hover {
+  text-decoration-thickness: 2px;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-foco);
+  outline-offset: 2px;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+fieldset {
+  margin: 0 0 var(--espacio-4);
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+legend {
+  padding: 0;
+  margin-bottom: var(--espacio-2);
+  font-weight: 700;
+}
+
+/* Utilidades */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.texto-mono {
+  font-family: var(--fuente-mono);
+  font-size: 0.9em;
+  white-space: nowrap;
+}
+
+.texto-negrita { font-weight: 700; }
