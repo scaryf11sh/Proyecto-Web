@@ -89,3 +89,14 @@ INSERT INTO usuario (id_usuario, nombre, empresa, correo, telefono, contrasena, 
 (3, 'Roberto Mendoza', 'Manufacturas del Norte', 'roberto@manunorte.mx', '6641122334', '$2y$12$ORs0vBXcwmajBVakobdOu.58AvX9.WeB0er2qxFaF3yKz97Br5kim', 'Cliente', '2026-07-05 12:30:00'),
 (4, 'Carlos Medina', NULL, 'carlos.medina@ejemplo.com', '6642233445', '$2y$12$7XkXxj3C8PfpAKQmvLRwj.qvEfLwgQvoIO2VD6qe7X0Cl0UbVMPTe', 'Cliente', '2026-07-09 16:45:00'),
 (5, 'Sofía Herrera', 'Farmacia San Rafael', 'sofia@sanrafael.mx', '6643344556', '$2y$12$nJDC77iZRLx7YYl9Rfkr5ux9GqQbyr/rdTBZ3FwVaVOSB..DDyZjC', 'Cliente', '2026-07-14 11:20:00');
+
+-- El servicio 8 queda inactivo y el 7 sin solicitudes para probar eliminar/desactivar.
+INSERT INTO servicio (id_servicio, nombre, descripcion, activo) VALUES
+(1, 'Instalación nueva', 'Obra eléctrica desde cero para naves industriales, locales comerciales o residencias.', 1),
+(2, 'Revisión o diagnóstico', 'Inspección técnica de tableros, circuitos, variaciones de voltaje y detección de fallas.', 1),
+(3, 'Ampliación o remodelación', 'Adición de circuitos, reubicación de salidas, tableros derivados y adecuación de carga.', 1),
+(4, 'Reparación', 'Corrección puntual de cortocircuitos, contactos, apagadores, luminarias o cableado dañado.', 1),
+(5, 'Mantenimiento preventivo', 'Limpieza, reapriete de conexiones, balanceo de cargas y pruebas en tableros eléctricos.', 1),
+(6, 'Instalación de subestación o transformador', 'Montaje y conexión de equipos de media a baja tensión para industria y comercio.', 1),
+(7, 'Sistema de tierras físicas y pararrayos', 'Instalación y medición de red de puesta a tierra para protección de equipos e inmuebles.', 1),
+(8, 'Certificación UVIE (Dictamen eléctrico)', 'Trámite de dictamen de verificación de instalaciones eléctricas (temporalmente suspendido).', 0);
