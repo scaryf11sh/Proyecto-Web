@@ -671,3 +671,345 @@ function obtener_solicitud_cliente(int $id_usuario, string $folio): ?array
     $fila = $stmt->fetch();
     return $fila ? normalizar_fila_solicitud($fila) : null;
 }
+
+function obtener_resumen_panel_admin(?string $fecha_referencia = null): array
+{
+    $ref = parsear_fecha_sql($fecha_referencia ?? fecha_referencia_sistema())
+        ?? new DateTimeImmutable(fecha_referencia_sistema());
+    $ref = $ref->setTime(0, 0);
+    $inicio_mes = $ref->modify('first day of this month');
+    $fin_mes = $ref->modify('last day of this month');
+    $pdo = db();
+
+    $contar = static function (string $sql, array $params = []) use ($pdo): int {
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        return (int) $stmt->fetchColumn();
+    };
+
+    return [
+        'nuevas' => $contar("SELECT COUNT(*) FROM solicitud WHERE estado = 'Enviada'"),
+        'en_revision' => $contar("SELECT COUNT(*) FROM solicitud WHERE estado = 'En revisión'"),
+        'visitas_proximas' => $contar(
+            "SELECT COUNT(*) FROM solicitud WHERE estado = 'Visita agendada'
+             AND fecha_visita >= :desde AND fecha_visita < :hasta",
+            [':desde' => $ref->format('Y-m-d 00:00:00'), ':hasta' => $ref->modify('+8 days')->format('Y-m-d 00:00:00')]
+        ),
+        'recibidas_mes' => $contar(
+            'SELECT COUNT(*) FROM solicitud WHERE fecha_registro >= :desde AND fecha_registro <= :hasta',
+            [':desde' => $inicio_mes->format('Y-m-d 00:00:00'), ':hasta' => $fin_mes->format('Y-m-d 23:59:59')]
+        ),
+        'mes_nombre' => MESES_ES[(int) $ref->format('n') - 1],
+        'rango_mes_texto' => '01/' . $ref->format('m') . ' – ' . $ref->format('d/m/Y'),
+        'fecha_encabezado' => formatear_fecha_encabezado($ref->format('Y-m-d')),
+    ];
+}
+
+function listar_atender_primero(int $limite = 5): array
+{
+    $limite = max(1, $limite);
+    $stmt = db()->prepare(
+        sql_base_solicitud() . " WHERE s.estado = 'Enviada'
+         ORDER BY s.prioridad DESC, s.fecha_registro ASC, s.id_solicitud ASC LIMIT :limite"
+    );
+    $stmt->bindValue(':limite', $limite, PDO::PARAM_INT);
+    $stmt->execute();
+    return array_map('normalizar_fila_solicitud', $stmt->fetchAll());
+}
+
+function obtener_reportes(string $desde = '2026-07-01', string $hasta = '2026-10-25', string $sector = 'Todos'): array
+{
+    $desde = normalizar_fecha_entrada($desde) ?? '2026-07-01';
+    $hasta = normalizar_fecha_entrada($hasta) ?? '2026-10-25';
+    if ($desde > $hasta) {
+        [$desde, $hasta] = [$hasta, $desde];
+    }
+    $sector = in_array($sector, SECTORES, true) ? $sector : 'Todos';
+
+    $donde = 'fecha_registro >= :desde AND fecha_registro <= :hasta';
+    $params = [':desde' => $desde . ' 00:00:00', ':hasta' => $hasta . ' 23:59:59'];
+    if ($sector !== 'Todos') {
+        $donde .= ' AND sector = :sector';
+        $params[':sector'] = $sector;
+    }
+    $pdo = db();
+    $consultar = static function (string $sql, array $extra = []) use ($pdo, $params): array {
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params + $extra);
+        return $stmt->fetchAll();
+    };
+
+    $total = (int) $consultar("SELECT COUNT(*) AS n FROM solicitud WHERE {$donde}")[0]['n'];
+    $porcentaje = static fn(int $parte, int $todo): float => $todo > 0 ? $parte * 100 / $todo : 0.0;
+
+    $canales = array_fill_keys(CANALES, 0);
+    foreach ($consultar("SELECT canal_origen, COUNT(*) AS n FROM solicitud WHERE {$donde} GROUP BY canal_origen") as $f) {
+        $canales[$f['canal_origen']] = (int) $f['n'];
+    }
+    arsort($canales);
+    $i2 = [];
+    foreach ($canales as $canal => $cantidad) {
+        $i2[] = ['canal' => $canal, 'cantidad' => $cantidad, 'porcentaje' => (int) round($porcentaje($cantidad, $total))];
+    }
+
+    $estados = array_fill_keys(ESTADOS, 0);
+    foreach ($consultar("SELECT estado, COUNT(*) AS n FROM solicitud WHERE {$donde} GROUP BY estado") as $f) {
+        $estados[$f['estado']] = (int) $f['n'];
+    }
+    $i3 = [];
+    foreach ($estados as $estado => $cantidad) {
+        $i3[] = ['estado' => $estado, 'cantidad' => $cantidad, 'porcentaje' => round($porcentaje($cantidad, $total), 1)];
+    }
+    $cerradas = array_sum(array_intersect_key($estados, array_flip(ESTADOS_CERRADOS)));
+
+    $por_mes = [];
+    foreach ($consultar("SELECT DATE_FORMAT(fecha_registro, '%Y-%m') AS anio_mes, COUNT(*) AS n FROM solicitud WHERE {$donde} GROUP BY anio_mes") as $f) {
+        $por_mes[$f['anio_mes']] = (int) $f['n'];
+    }
+    $i1 = [];
+    $cursor = (new DateTimeImmutable($desde))->modify('first day of this month');
+    $limite = new DateTimeImmutable($hasta);
+    while ($cursor <= $limite) {
+        $clave = $cursor->format('Y-m');
+        $i1[] = [
+            'anio_mes' => $clave,
+            'etiqueta' => mb_substr(MESES_ES[(int) $cursor->format('n') - 1], 0, 3),
+            'cantidad' => $por_mes[$clave] ?? 0,
+        ];
+        $cursor = $cursor->modify('+1 month');
+    }
+
+    $visita = $consultar(
+        "SELECT sector, COUNT(*) AS con_visita, ROUND(AVG(DATEDIFF(fecha_visita, fecha_registro)), 1) AS dias
+         FROM solicitud WHERE {$donde} AND fecha_visita IS NOT NULL GROUP BY sector"
+    );
+    $por_sector = [];
+    foreach ($visita as $f) {
+        $por_sector[$f['sector']] = ['con_visita' => (int) $f['con_visita'], 'dias_promedio' => (float) $f['dias']];
+    }
+    $i4 = [];
+    foreach (SECTORES as $s) {
+        $i4[] = ['sector' => $s, 'con_visita' => $por_sector[$s]['con_visita'] ?? 0, 'dias_promedio' => $por_sector[$s]['dias_promedio'] ?? 0.0];
+    }
+
+    $global = $consultar(
+        "SELECT COUNT(*) AS n, ROUND(AVG(DATEDIFF(fecha_visita, fecha_registro)), 1) AS dias
+         FROM solicitud WHERE {$donde} AND fecha_visita IS NOT NULL"
+    )[0];
+
+    return [
+        'periodo' => [
+            'desde' => $desde,
+            'hasta' => $hasta,
+            'etiqueta' => formatear_fecha($desde) . ' – ' . formatear_fecha($hasta),
+            'sector' => $sector,
+        ],
+        'kpis' => [
+            'total' => $total,
+            'web_cantidad' => $canales['Web'],
+            'web_porcentaje' => (int) round($porcentaje($canales['Web'], $total)),
+            'promedio_dias_visita' => (float) ($global['dias'] ?? 0),
+            'total_con_visita' => (int) $global['n'],
+            'activas' => $total - $cerradas,
+        ],
+        'i1_por_mes' => $i1,
+        'i2_por_canal' => $i2,
+        'i3_por_estado' => $i3,
+        'i4_tiempo_visita' => $i4,
+    ];
+}
+
+function normalizar_fila_servicio(array $fila): array
+{
+    $fila['id_servicio'] = (int) $fila['id_servicio'];
+    $fila['activo'] = (int) $fila['activo'];
+    if (isset($fila['total_solicitudes'])) {
+        $fila['total_solicitudes'] = (int) $fila['total_solicitudes'];
+    }
+    return $fila;
+}
+
+function listar_servicios(bool $solo_activos = true): array
+{
+    if ($solo_activos) {
+        $filas = db()->query('SELECT id_servicio, nombre, descripcion, activo FROM servicio WHERE activo = 1 ORDER BY id_servicio')->fetchAll();
+    } else {
+        $filas = db()->query(
+            'SELECT sv.id_servicio, sv.nombre, sv.descripcion, sv.activo, COUNT(s.id_solicitud) AS total_solicitudes
+             FROM servicio sv LEFT JOIN solicitud s ON s.id_servicio = sv.id_servicio
+             GROUP BY sv.id_servicio, sv.nombre, sv.descripcion, sv.activo
+             ORDER BY sv.id_servicio'
+        )->fetchAll();
+    }
+    return array_map('normalizar_fila_servicio', $filas);
+}
+
+function obtener_servicio(int $id_servicio): ?array
+{
+    $stmt = db()->prepare(
+        'SELECT sv.id_servicio, sv.nombre, sv.descripcion, sv.activo, COUNT(s.id_solicitud) AS total_solicitudes
+         FROM servicio sv LEFT JOIN solicitud s ON s.id_servicio = sv.id_servicio
+         WHERE sv.id_servicio = :id
+         GROUP BY sv.id_servicio, sv.nombre, sv.descripcion, sv.activo'
+    );
+    $stmt->execute([':id' => $id_servicio]);
+    $fila = $stmt->fetch();
+    return $fila ? normalizar_fila_servicio($fila) : null;
+}
+
+function crear_servicio(array $datos): array
+{
+    $errores = validar_servicio($datos);
+    if ($errores !== []) {
+        return ['ok' => false, 'errores' => $errores, 'id_servicio' => null];
+    }
+    try {
+        $stmt = db()->prepare('INSERT INTO servicio (nombre, descripcion, activo) VALUES (:nombre, :descripcion, :activo)');
+        $stmt->execute([
+            ':nombre' => trim((string) $datos['nombre']),
+            ':descripcion' => texto_o_null($datos['descripcion'] ?? ''),
+            ':activo' => array_key_exists('activo', $datos) ? ((int) $datos['activo'] === 1 ? 1 : 0) : 1,
+        ]);
+    } catch (PDOException $ex) {
+        if ($ex->getCode() === '23000') {
+            return ['ok' => false, 'errores' => ['nombre' => 'Ya existe un servicio con este nombre.'], 'id_servicio' => null];
+        }
+        throw $ex;
+    }
+    return ['ok' => true, 'errores' => [], 'id_servicio' => (int) db()->lastInsertId()];
+}
+
+function actualizar_servicio(int $id_servicio, array $datos): array
+{
+    $actual = obtener_servicio($id_servicio);
+    if ($actual === null) {
+        return ['ok' => false, 'errores' => ['servicio' => 'El servicio no existe.']];
+    }
+    $errores = validar_servicio($datos, $id_servicio);
+    if ($errores !== []) {
+        return ['ok' => false, 'errores' => $errores];
+    }
+    try {
+        $stmt = db()->prepare('UPDATE servicio SET nombre = :nombre, descripcion = :descripcion, activo = :activo WHERE id_servicio = :id');
+        $stmt->execute([
+            ':nombre' => trim((string) $datos['nombre']),
+            ':descripcion' => texto_o_null($datos['descripcion'] ?? ''),
+            ':activo' => array_key_exists('activo', $datos) ? ((int) $datos['activo'] === 1 ? 1 : 0) : $actual['activo'],
+            ':id' => $id_servicio,
+        ]);
+    } catch (PDOException $ex) {
+        if ($ex->getCode() === '23000') {
+            return ['ok' => false, 'errores' => ['nombre' => 'Ya existe un servicio con este nombre.']];
+        }
+        throw $ex;
+    }
+    return ['ok' => true, 'errores' => []];
+}
+
+function eliminar_servicio(int $id_servicio): array
+{
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        $stmt = $pdo->prepare('SELECT id_servicio FROM servicio WHERE id_servicio = :id FOR UPDATE');
+        $stmt->execute([':id' => $id_servicio]);
+        if ($stmt->fetchColumn() === false) {
+            $pdo->rollBack();
+            return ['ok' => false, 'resultado' => 'no_encontrado', 'solicitudes_asociadas' => 0, 'mensaje' => 'El servicio no existe.'];
+        }
+
+        $stmt = $pdo->prepare('SELECT COUNT(*) FROM solicitud WHERE id_servicio = :id');
+        $stmt->execute([':id' => $id_servicio]);
+        $asociadas = (int) $stmt->fetchColumn();
+
+        if ($asociadas > 0) {
+            $pdo->prepare('UPDATE servicio SET activo = 0 WHERE id_servicio = :id')->execute([':id' => $id_servicio]);
+            $pdo->commit();
+            return [
+                'ok' => true,
+                'resultado' => 'desactivado',
+                'solicitudes_asociadas' => $asociadas,
+                'mensaje' => 'El servicio tiene solicitudes asociadas; se desactivó para conservar el historial.',
+            ];
+        }
+
+        $pdo->prepare('DELETE FROM servicio WHERE id_servicio = :id')->execute([':id' => $id_servicio]);
+        $pdo->commit();
+        return ['ok' => true, 'resultado' => 'eliminado', 'solicitudes_asociadas' => 0, 'mensaje' => 'Servicio eliminado correctamente.'];
+    } catch (Throwable $ex) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        throw $ex;
+    }
+}
+
+function normalizar_fila_usuario(array $fila): array
+{
+    $fila['id_usuario'] = (int) $fila['id_usuario'];
+    if (isset($fila['total_solicitudes'])) {
+        $fila['total_solicitudes'] = (int) $fila['total_solicitudes'];
+    }
+    return $fila;
+}
+
+function listar_usuarios(string $busqueda = ''): array
+{
+    $sql = 'SELECT u.id_usuario, u.nombre, u.empresa, u.correo, u.telefono, u.rol, u.fecha_registro,
+                   COUNT(s.id_solicitud) AS total_solicitudes
+            FROM usuario u LEFT JOIN solicitud s ON s.id_usuario = u.id_usuario';
+    $params = [];
+    $busqueda = trim($busqueda);
+    if ($busqueda !== '') {
+        $like = '%' . escapar_like($busqueda) . '%';
+        $sql .= ' WHERE u.nombre LIKE :b_nombre OR u.empresa LIKE :b_empresa OR u.correo LIKE :b_correo';
+        $params = [':b_nombre' => $like, ':b_empresa' => $like, ':b_correo' => $like];
+    }
+    $sql .= ' GROUP BY u.id_usuario, u.nombre, u.empresa, u.correo, u.telefono, u.rol, u.fecha_registro
+              ORDER BY u.rol = \'Administrador\' DESC, u.nombre ASC';
+    $stmt = db()->prepare($sql);
+    $stmt->execute($params);
+    return array_map('normalizar_fila_usuario', $stmt->fetchAll());
+}
+
+function obtener_usuario(int $id_usuario): ?array
+{
+    $stmt = db()->prepare('SELECT id_usuario, nombre, empresa, correo, telefono, rol, fecha_registro FROM usuario WHERE id_usuario = :id');
+    $stmt->execute([':id' => $id_usuario]);
+    $fila = $stmt->fetch();
+    return $fila ? normalizar_fila_usuario($fila) : null;
+}
+
+function cambiar_rol_usuario(int $id_usuario, string $nuevo_rol, ?int $id_admin_actual = null): array
+{
+    if (!in_array($nuevo_rol, ['Cliente', 'Administrador'], true)) {
+        return ['ok' => false, 'error' => 'El rol indicado no es válido.'];
+    }
+    $usuario = obtener_usuario($id_usuario);
+    if ($usuario === null) {
+        return ['ok' => false, 'error' => 'El usuario no existe.'];
+    }
+    if ($usuario['rol'] === $nuevo_rol) {
+        return ['ok' => true, 'error' => null];
+    }
+    if ($nuevo_rol === 'Cliente') {
+        if ($id_admin_actual !== null && $id_usuario === $id_admin_actual) {
+            return ['ok' => false, 'error' => 'No puede quitarse a sí mismo el rol de Administrador.'];
+        }
+        $admins = (int) db()->query("SELECT COUNT(*) FROM usuario WHERE rol = 'Administrador'")->fetchColumn();
+        if ($admins <= 1) {
+            return ['ok' => false, 'error' => 'Debe existir al menos un administrador.'];
+        }
+    }
+    $stmt = db()->prepare('UPDATE usuario SET rol = :rol WHERE id_usuario = :id');
+    $stmt->execute([':rol' => $nuevo_rol, ':id' => $id_usuario]);
+    return ['ok' => true, 'error' => null];
+}
+
+function listar_clientes_activos(): array
+{
+    $filas = db()->query(
+        "SELECT id_usuario, nombre, empresa, correo, telefono FROM usuario WHERE rol = 'Cliente' ORDER BY nombre ASC"
+    )->fetchAll();
+    return array_map('normalizar_fila_usuario', $filas);
+}
