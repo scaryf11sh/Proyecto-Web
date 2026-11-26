@@ -1,0 +1,28 @@
+# macOS
+.DS_Store
+
+# Editores
+.vscode/
+.idea/
+
+# Dependencias
+node_modules/
+/vendor/
+
+# Registros
+*.log
+
+# Entorno
+.env
+
+# Temporales
+/tmp/
+.orchestra/
+.claude/
+
+# Pruebas de navegador
+test-results/
+playwright-report/
+
+# Documentos de trabajo
+docs/propuesta.docx
