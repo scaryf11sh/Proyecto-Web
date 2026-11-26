@@ -191,3 +191,90 @@ function generar_folio(PDO $pdo, ?int $anio_dos_digitos = null): string
         throw $ex;
     }
 }
+
+function etapas_seguimiento(): array
+{
+    return ['Enviada', 'En revisión', 'Visita agendada', 'Presupuesto', 'Aceptada', 'En progreso', 'Finalizada'];
+}
+
+function estados_permitidos(string $actual, string $rol = 'Administrador'): array
+{
+    if ($rol === 'Cliente') {
+        return es_cancelable_por_cliente($actual) ? ['Cancelada'] : [];
+    }
+    if ($rol !== 'Administrador') {
+        return [];
+    }
+    $transiciones = [
+        'Enviada' => ['En revisión', 'Cancelada'],
+        'En revisión' => ['Visita agendada', 'Rechazada', 'Cancelada'],
+        'Visita agendada' => ['Presupuesto', 'Rechazada', 'Cancelada'],
+        'Presupuesto' => ['Aceptada', 'Rechazada', 'Cancelada'],
+        'Aceptada' => ['En progreso', 'Cancelada'],
+        'En progreso' => ['Finalizada', 'Cancelada'],
+        'Rechazada' => ['En revisión'],
+        'Finalizada' => [],
+        'Cancelada' => [],
+    ];
+    return $transiciones[$actual] ?? [];
+}
+
+function es_cancelable_por_cliente(string $estado): bool
+{
+    return $estado === 'Enviada' || $estado === 'En revisión';
+}
+
+function cambiar_estado(
+    int $id_solicitud,
+    string $nuevo_estado,
+    string $rol,
+    ?string $fecha_visita = null,
+    ?int $id_usuario_cliente = null
+): array {
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        $stmt = $pdo->prepare('SELECT id_usuario, estado, fecha_visita FROM solicitud WHERE id_solicitud = :id FOR UPDATE');
+        $stmt->execute([':id' => $id_solicitud]);
+        $fila = $stmt->fetch();
+
+        $errores = [];
+        if (!$fila) {
+            $errores['solicitud'] = 'La solicitud no existe.';
+        } elseif ($rol === 'Cliente' && ($id_usuario_cliente === null || (int) $fila['id_usuario'] !== $id_usuario_cliente)) {
+            // Se responde igual que si no existiera para no filtrar solicitudes ajenas.
+            $errores['solicitud'] = 'La solicitud no existe.';
+        } elseif (!in_array($nuevo_estado, estados_permitidos((string) $fila['estado'], $rol), true)) {
+            $errores['estado'] = "No se puede cambiar de {$fila['estado']} a {$nuevo_estado}.";
+        }
+
+        $visita_cruda = trim((string) $fecha_visita);
+        $visita = normalizar_fecha_entrada($visita_cruda, true);
+        if ($errores === []) {
+            if ($visita_cruda !== '' && $visita === null) {
+                $errores['fecha_visita'] = 'Ingrese una fecha y hora válidas.';
+            } elseif ($nuevo_estado === 'Visita agendada' && $visita === null && ($fecha_visita !== null || $fila['fecha_visita'] === null)) {
+                $errores['fecha_visita'] = 'Requerida para Visita agendada';
+            }
+        }
+
+        if ($errores !== []) {
+            $pdo->rollBack();
+            return ['ok' => false, 'errores' => $errores];
+        }
+
+        $upd = $pdo->prepare('UPDATE solicitud SET estado = :estado, fecha_visita = :visita WHERE id_solicitud = :id');
+        $upd->execute([
+            ':estado' => $nuevo_estado,
+            ':visita' => $visita ?? $fila['fecha_visita'],
+            ':id' => $id_solicitud,
+        ]);
+        $pdo->commit();
+        return ['ok' => true, 'errores' => []];
+    } catch (Throwable $ex) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        throw $ex;
+    }
+}
