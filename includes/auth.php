@@ -185,3 +185,52 @@ function cerrar_sesion(): void
     }
     session_destroy();
 }
+
+function csrf_token(): string
+{
+    iniciar_sesion();
+    if (empty($_SESSION['csrf_token']) || !is_string($_SESSION['csrf_token'])) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    }
+    return $_SESSION['csrf_token'];
+}
+
+function csrf_campo(): string
+{
+    return '<input type="hidden" name="csrf_token" value="'
+        . htmlspecialchars(csrf_token(), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '">';
+}
+
+function verificar_csrf(?string $token = null): bool
+{
+    iniciar_sesion();
+    $token ??= (string) ($_POST['csrf_token'] ?? '');
+    $esperado = $_SESSION['csrf_token'] ?? '';
+    return is_string($esperado) && $esperado !== '' && hash_equals($esperado, $token);
+}
+
+function exigir_csrf(): void
+{
+    if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && verificar_csrf()) {
+        return;
+    }
+    http_response_code(403);
+    flash_establecer('error', 'La solicitud no es válida o la sesión expiró. Intente de nuevo.');
+    header('Content-Type: text/plain; charset=UTF-8');
+    echo 'Solicitud no válida (403). Regrese e intente de nuevo.';
+    exit;
+}
+
+function flash_establecer(string $tipo, string $mensaje): void
+{
+    iniciar_sesion();
+    $_SESSION['flash'] = ['tipo' => $tipo, 'mensaje' => $mensaje];
+}
+
+function flash_obtener(): ?array
+{
+    iniciar_sesion();
+    $flash = $_SESSION['flash'] ?? null;
+    unset($_SESSION['flash']);
+    return is_array($flash) ? $flash : null;
+}
