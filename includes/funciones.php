@@ -138,3 +138,56 @@ function normalizar_fecha_entrada(?string $valor, bool $con_hora = false): ?stri
     $fecha = sprintf('%04d-%02d-%02d', $anio, $mes, $dia);
     return $con_hora ? sprintf('%s %02d:%02d:00', $fecha, $hora, $minuto) : $fecha;
 }
+
+function calcular_prioridad(string $sector, string $escala): int
+{
+    $matriz = [
+        'Industrial' => ['Grande' => 9, 'Mediano' => 8, 'Pequeño' => 3],
+        'Comercial' => ['Grande' => 7, 'Mediano' => 6, 'Pequeño' => 2],
+        'Residencial' => ['Grande' => 5, 'Mediano' => 4, 'Pequeño' => 1],
+    ];
+    if (!isset($matriz[$sector][$escala])) {
+        throw new InvalidArgumentException("Sector o escala fuera de catálogo: {$sector} / {$escala}");
+    }
+    return $matriz[$sector][$escala];
+}
+
+function nivel_prioridad(int $prioridad): string
+{
+    if ($prioridad >= 7) {
+        return 'Alta';
+    }
+    return $prioridad >= 4 ? 'Media' : 'Baja';
+}
+
+function formatear_prioridad(int $prioridad): string
+{
+    return $prioridad . ' · ' . nivel_prioridad($prioridad);
+}
+
+function generar_folio(PDO $pdo, ?int $anio_dos_digitos = null): string
+{
+    $transaccion_propia = !$pdo->inTransaction();
+    if ($transaccion_propia) {
+        $pdo->beginTransaction();
+    }
+    try {
+        $anio = sprintf('%02d', $anio_dos_digitos ?? (int) date('y'));
+        $prefijo = "OEM-{$anio}-";
+
+        $stmt = $pdo->prepare('SELECT folio FROM solicitud WHERE folio LIKE :prefijo ORDER BY folio DESC LIMIT 1 FOR UPDATE');
+        $stmt->execute([':prefijo' => $prefijo . '%']);
+        $ultimo = $stmt->fetchColumn();
+        $siguiente = $ultimo === false ? 1 : ((int) substr((string) $ultimo, -4)) + 1;
+
+        if ($transaccion_propia) {
+            $pdo->commit();
+        }
+        return $prefijo . str_pad((string) $siguiente, 4, '0', STR_PAD_LEFT);
+    } catch (Throwable $ex) {
+        if ($transaccion_propia && $pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        throw $ex;
+    }
+}
