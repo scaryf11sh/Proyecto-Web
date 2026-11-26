@@ -81,3 +81,11 @@ CREATE TABLE solicitud (
         ON DELETE RESTRICT
         ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Cuentas de prueba: admin@oem.com / AdminOEM2026!; los clientes usan Cliente2026!
+INSERT INTO usuario (id_usuario, nombre, empresa, correo, telefono, contrasena, rol, fecha_registro) VALUES
+(1, 'Administrador OEM', 'Obras Eléctricas Mendivil', 'admin@oem.com', '6640000000', '$2y$12$4w82NJLMOAoCDKa5DWXa7uiYpPCqebBzvi8b1BchSUgW6cfrgF/52', 'Administrador', '2026-06-15 09:00:00'),
+(2, 'Laura Gómez', NULL, 'laura.gomez@ejemplo.com', '6640000000', '$2y$12$6.5g/Ad60PSdMhIg5QFhc.q7jpL/7R.i4WUgN7XSa/PVjuOUgbneO', 'Cliente', '2026-07-02 10:15:00'),
+(3, 'Roberto Mendoza', 'Manufacturas del Norte', 'roberto@manunorte.mx', '6641122334', '$2y$12$ORs0vBXcwmajBVakobdOu.58AvX9.WeB0er2qxFaF3yKz97Br5kim', 'Cliente', '2026-07-05 12:30:00'),
+(4, 'Carlos Medina', NULL, 'carlos.medina@ejemplo.com', '6642233445', '$2y$12$7XkXxj3C8PfpAKQmvLRwj.qvEfLwgQvoIO2VD6qe7X0Cl0UbVMPTe', 'Cliente', '2026-07-09 16:45:00'),
+(5, 'Sofía Herrera', 'Farmacia San Rafael', 'sofia@sanrafael.mx', '6643344556', '$2y$12$nJDC77iZRLx7YYl9Rfkr5ux9GqQbyr/rdTBZ3FwVaVOSB..DDyZjC', 'Cliente', '2026-07-14 11:20:00');
