@@ -278,3 +278,118 @@ function cambiar_estado(
         throw $ex;
     }
 }
+
+function validar_registro(array $datos): array
+{
+    $errores = [];
+    $nombre = trim((string) ($datos['nombre'] ?? ''));
+    $empresa = trim((string) ($datos['empresa'] ?? ''));
+    $correo = trim((string) ($datos['correo'] ?? ''));
+    $contrasena = (string) ($datos['contrasena'] ?? '');
+
+    if ($nombre === '' || mb_strlen($nombre) > 100) {
+        $errores['nombre'] = 'El nombre completo o razón social es obligatorio.';
+    }
+    if (mb_strlen($empresa) > 100) {
+        $errores['empresa'] = 'El nombre de la empresa no puede exceder 100 caracteres.';
+    }
+    if ($correo === '' || mb_strlen($correo) > 120 || filter_var($correo, FILTER_VALIDATE_EMAIL) === false) {
+        $errores['correo'] = 'Ingrese un correo electrónico válido.';
+    } else {
+        $stmt = db()->prepare('SELECT 1 FROM usuario WHERE correo = :correo LIMIT 1');
+        $stmt->execute([':correo' => $correo]);
+        if ($stmt->fetchColumn() !== false) {
+            $errores['correo'] = 'Ya existe una cuenta con este correo.';
+        }
+    }
+    if (strlen(limpiar_telefono((string) ($datos['telefono'] ?? ''))) !== 10) {
+        $errores['telefono'] = 'Ingrese un teléfono válido de 10 dígitos.';
+    }
+    if (mb_strlen($contrasena) < 8) {
+        $errores['contrasena'] = 'La contraseña debe tener al menos 8 caracteres.';
+    }
+    if (!hash_equals($contrasena, (string) ($datos['confirmar_contrasena'] ?? ''))) {
+        $errores['confirmar_contrasena'] = 'Las contraseñas no coinciden.';
+    }
+    if (empty($datos['aviso_privacidad'])) {
+        $errores['aviso_privacidad'] = 'Debe aceptar el aviso de privacidad.';
+    }
+    return $errores;
+}
+
+function validar_solicitud(array $datos, string $modo = 'crear_cliente', ?string $estado_actual = null): array
+{
+    $errores = [];
+    $crea = $modo === 'crear_cliente' || $modo === 'crear_admin';
+
+    if ($modo === 'crear_admin' && !in_array((string) ($datos['canal_origen'] ?? ''), CANALES_ADMIN, true)) {
+        $errores['canal_origen'] = 'Seleccione un canal de origen válido.';
+    }
+    if (!in_array((string) ($datos['sector'] ?? ''), SECTORES, true)) {
+        $errores['sector'] = 'Seleccione el tipo de lugar.';
+    }
+    if (!in_array((string) ($datos['escala'] ?? ''), ESCALAS, true)) {
+        $errores['escala'] = 'Seleccione el tamaño del trabajo.';
+    }
+
+    $id_servicio = (int) ($datos['id_servicio'] ?? 0);
+    $stmt = db()->prepare('SELECT activo FROM servicio WHERE id_servicio = :id');
+    $stmt->execute([':id' => $id_servicio]);
+    $activo = $stmt->fetchColumn();
+    if ($activo === false) {
+        $errores['id_servicio'] = 'Seleccione un servicio válido.';
+    } elseif ($crea && (int) $activo !== 1) {
+        $errores['id_servicio'] = 'El servicio seleccionado no está disponible.';
+    }
+
+    if (trim((string) ($datos['descripcion'] ?? '')) === '') {
+        $errores['descripcion'] = 'La descripción es obligatoria.';
+    }
+    $ubicacion = trim((string) ($datos['ubicacion'] ?? ''));
+    if ($ubicacion === '' || mb_strlen($ubicacion) > 200) {
+        $errores['ubicacion'] = 'La ubicación es obligatoria (máximo 200 caracteres).';
+    }
+    $contacto = trim((string) ($datos['nombre_contacto'] ?? ''));
+    if ($contacto === '' || mb_strlen($contacto) > 100) {
+        $errores['nombre_contacto'] = 'El nombre de contacto es obligatorio (máximo 100 caracteres).';
+    }
+    if (strlen(limpiar_telefono((string) ($datos['telefono_contacto'] ?? ''))) !== 10) {
+        $errores['telefono_contacto'] = 'Ingrese un teléfono válido de 10 dígitos.';
+    }
+
+    if ($modo === 'editar_admin') {
+        $estado = (string) ($datos['estado'] ?? $estado_actual ?? '');
+        if (!in_array($estado, ESTADOS, true)) {
+            $errores['estado'] = 'Seleccione un estado válido.';
+        } elseif ($estado_actual !== null && $estado !== $estado_actual
+            && !in_array($estado, estados_permitidos($estado_actual, 'Administrador'), true)) {
+            $errores['estado'] = "No se puede cambiar de {$estado_actual} a {$estado}.";
+        }
+
+        $visita_cruda = trim((string) ($datos['fecha_visita'] ?? ''));
+        $visita = normalizar_fecha_entrada($visita_cruda, true);
+        if ($estado === 'Visita agendada' && $visita === null) {
+            $errores['fecha_visita'] = 'Requerida para Visita agendada';
+        } elseif ($visita_cruda !== '' && $visita === null) {
+            $errores['fecha_visita'] = 'Ingrese una fecha y hora válidas.';
+        }
+    }
+    return $errores;
+}
+
+function validar_servicio(array $datos, ?int $id_servicio_actual = null): array
+{
+    $nombre = trim((string) ($datos['nombre'] ?? ''));
+    if ($nombre === '') {
+        return ['nombre' => 'El nombre del servicio es obligatorio.'];
+    }
+    if (mb_strlen($nombre) > 80) {
+        return ['nombre' => 'El nombre no puede exceder 80 caracteres.'];
+    }
+    $stmt = db()->prepare('SELECT 1 FROM servicio WHERE nombre = :nombre AND id_servicio <> :id LIMIT 1');
+    $stmt->execute([':nombre' => $nombre, ':id' => $id_servicio_actual ?? 0]);
+    if ($stmt->fetchColumn() !== false) {
+        return ['nombre' => 'Ya existe un servicio con este nombre.'];
+    }
+    return [];
+}
