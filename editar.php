@@ -203,7 +203,7 @@ require __DIR__ . '/includes/nav.php';
 
       <section class="drawer-seccion">
         <h2 class="drawer-seccion__titulo">Seguimiento</h2>
-        <p>Estado actual <span class="badge-estado badge-estado--<?= e($clase_estado($estado_actual)) ?>">[<?= e($estado_actual) ?>]</span></p>
+        <p>Estado actual <span class="badge-estado badge-estado--<?= e($clase_estado($estado_actual)) ?>"><?= e($estado_actual) ?></span></p>
 
         <?php if ($permitidos !== [] && !$solo_lectura): ?>
           <div class="campo <?= isset($errores['estado']) ? 'campo--error' : '' ?>">

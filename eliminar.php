@@ -95,7 +95,7 @@ require __DIR__ . '/includes/nav.php';
         <?php if (in_array('Cancelada', $permitidos, true)): ?>
           <button type="submit" name="accion" value="cancelar" class="btn btn--secundario">Cambiar a Cancelada</button>
         <?php endif; ?>
-        <button type="submit" name="accion" value="eliminar" class="btn btn--primario">Eliminar solicitud</button>
+        <button type="submit" name="accion" value="eliminar" class="btn btn--peligro">Eliminar solicitud</button>
       </div>
     </form>
   </section>
