@@ -11,6 +11,21 @@
     }
   }
 
+  // light-dark() no se puede pasar al canvas ni a atributos SVG: se resuelve con un elemento de prueba.
+  var sonda = null;
+  function tema(nombre, respaldo) {
+    if (!sonda) {
+      sonda = document.createElement('span');
+      sonda.hidden = true;
+      document.body.appendChild(sonda);
+    }
+    sonda.style.color = '';
+    sonda.style.color = 'var(' + nombre + ')';
+    return window.getComputedStyle(sonda).color || respaldo;
+  }
+
+  var FUENTE = 'Onest, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+
   function calcularRangoPeriodo(atajo, fechaReferencia) {
     var ref = /^\d{4}-\d{2}-\d{2}$/.test(fechaReferencia || '') ? fechaReferencia : '2026-10-25';
     var partes = ref.split('-');
@@ -109,21 +124,26 @@
     var maxEje = Math.max(25, Math.ceil(maxDato / 5) * 5);
     var pasoEje = Math.max(5, Math.round(maxEje / 5));
 
-    ctx.font = '600 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    var cTexto = tema('--texto', '#f2f2f3');
+    var cTexto2 = tema('--texto-2', '#9b9da4');
+    var cAcento = tema('--acento', '#f5b83d');
+    var cFondo = tema('--surface', '#121317');
+
+    ctx.font = '500 12px ' + FUENTE;
     ctx.textBaseline = 'middle';
 
     for (var valor = 0; valor <= maxEje; valor += pasoEje) {
       var proporcion = valor / maxEje;
       var y = padArr + altoArea - proporcion * altoArea;
 
-      ctx.strokeStyle = valor === 0 ? '#111111' : '#d0d5dd';
-      ctx.lineWidth = valor === 0 ? 1.5 : 1;
+      ctx.strokeStyle = valor === 0 ? tema('--linea-3', 'rgba(255, 255, 255, 0.28)') : tema('--linea', 'rgba(255, 255, 255, 0.08)');
+      ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(padIzq, y);
       ctx.lineTo(padIzq + anchoArea, y);
       ctx.stroke();
 
-      ctx.fillStyle = '#555555';
+      ctx.fillStyle = cTexto2;
       ctx.textAlign = 'right';
       ctx.fillText(String(valor), padIzq - 8, y);
     }
@@ -144,8 +164,8 @@
       };
     });
 
-    ctx.strokeStyle = '#111111';
-    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = cTexto;
+    ctx.lineWidth = 2;
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
     ctx.beginPath();
@@ -155,23 +175,24 @@
     });
     ctx.stroke();
 
-    puntos.forEach(function (p) {
-      ctx.fillStyle = '#f2b705';
-      ctx.strokeStyle = '#111111';
+    puntos.forEach(function (p, i) {
+      ctx.fillStyle = cFondo;
+      // El último mes, el vigente, va en ámbar.
+      ctx.strokeStyle = i === puntos.length - 1 ? cAcento : cTexto;
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.arc(p.x, p.y, 4.5, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
 
-      ctx.fillStyle = '#111111';
-      ctx.font = '700 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.fillStyle = cTexto;
+      ctx.font = '600 12px ' + FUENTE;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'bottom';
       ctx.fillText(String(p.cantidad), p.x, Math.max(14, p.y - 8));
 
-      ctx.fillStyle = '#555555';
-      ctx.font = '600 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+      ctx.fillStyle = cTexto2;
+      ctx.font = '500 12px ' + FUENTE;
       ctx.textBaseline = 'top';
       ctx.fillText(p.etiqueta, p.x, padArr + altoArea + 8);
     });
@@ -190,10 +211,10 @@
     var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     barras.forEach(function (barra, idx) {
-      var mod = modificadores[idx] || 'barra-horizontal--cuaternaria';
+      var mod = idx < modificadores.length ? modificadores[idx] : 'barra-horizontal--cuaternaria';
       if (mod) barra.classList.add(mod);
       if (!reduceMotion) {
-        barra.style.transition = 'width 160ms ease-out';
+        barra.style.transition = 'width 180ms ease-out';
       }
       if (Array.isArray(filas) && filas[idx] && typeof filas[idx].porcentaje !== 'undefined') {
         barra.style.width = Math.max(0, Math.min(100, Number(filas[idx].porcentaje) || 0)) + '%';
@@ -265,7 +286,7 @@
       var textoSector = document.createElementNS(ns, 'text');
       textoSector.setAttribute('x', '0');
       textoSector.setAttribute('y', String(y + 13));
-      textoSector.setAttribute('fill', '#111111');
+      textoSector.setAttribute('fill', tema('--texto', '#f2f2f3'));
       textoSector.setAttribute('font-size', '12');
       textoSector.setAttribute('font-weight', '600');
       textoSector.textContent = f.sector;
@@ -277,14 +298,14 @@
       rect.setAttribute('width', String(anchoBarra));
       rect.setAttribute('height', '14');
       rect.setAttribute('rx', '3');
-      rect.setAttribute('fill', i === 0 ? '#111111' : (i === 1 ? '#555555' : '#7a7f87'));
+      rect.setAttribute('fill', i === 0 ? tema('--texto', '#f2f2f3') : (i === 1 ? tema('--info', '#8aabff') : tema('--aviso', '#e9a23b')));
       svg.appendChild(rect);
 
       var textoValor = document.createElementNS(ns, 'text');
       textoValor.setAttribute('x', '316');
       textoValor.setAttribute('y', String(y + 13));
       textoValor.setAttribute('text-anchor', 'end');
-      textoValor.setAttribute('fill', '#555555');
+      textoValor.setAttribute('fill', tema('--texto-2', '#9b9da4'));
       textoValor.setAttribute('font-size', '12');
       textoValor.setAttribute('font-weight', '600');
       textoValor.textContent = f.dias_promedio.toFixed(1) + ' d';
@@ -314,6 +335,12 @@
     }
 
     renderizarTodo();
+
+    document.addEventListener('oem-tema', function () {
+      var viejo = document.querySelector('#grafica-i4 svg[data-grafica="i4"]');
+      if (viejo) viejo.remove();
+      renderizarTodo();
+    });
 
     var rafId = null;
     window.addEventListener('resize', function () {
