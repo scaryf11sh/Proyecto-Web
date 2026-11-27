@@ -39,7 +39,7 @@ require __DIR__ . '/../includes/nav.php';
 </div>
 <?php else: ?>
 <div class="tabla-contenedor">
-  <table class="tabla-datos">
+  <table class="tabla-datos tabla-datos--lista">
     <caption>Servicios del catálogo</caption>
     <thead>
       <tr>
@@ -53,14 +53,14 @@ require __DIR__ . '/../includes/nav.php';
     <tbody>
       <?php foreach ($servicios as $servicio): ?>
       <tr>
-        <td class="texto-negrita"><?= e($servicio['nombre']) ?></td>
-        <td><?= e($servicio['descripcion'] ?? '') ?></td>
-        <td><?= e((int)$servicio['total_solicitudes']) ?></td>
-        <td>
+        <td class="texto-negrita" data-label="Servicio"><?= e($servicio['nombre']) ?></td>
+        <td data-label="Descripción"><?= e($servicio['descripcion'] ?? '') ?></td>
+        <td data-label="Solicitudes"><?= e((int)$servicio['total_solicitudes']) ?></td>
+        <td data-label="Estado">
           <?php if ((int)$servicio['activo'] === 1): ?>
-          <span class="badge-estado badge-estado--aceptada">Activo</span>
+          <span class="badge-estado badge-estado--activo">Activo</span>
           <?php else: ?>
-          <span class="badge-estado badge-estado--cancelada">Inactivo</span>
+          <span class="badge-estado badge-estado--inactivo">Inactivo</span>
           <?php endif; ?>
         </td>
         <td class="tabla-datos__acciones">

@@ -68,8 +68,9 @@ require __DIR__ . '/includes/nav.php';
 
 <form class="barra-filtros" method="get" action="index.php">
   <div class="barra-filtros__busqueda">
-    <input class="campo__control" type="text" name="q" aria-label="Buscar solicitudes"
+    <input class="campo__control" type="search" id="buscar-solicitudes" name="q" aria-label="Buscar solicitudes" aria-keyshortcuts="/"
            placeholder="Buscar por folio, cliente o teléfono" value="<?= e($filtros['q']) ?>">
+    <kbd class="kbd barra-filtros__atajo" aria-hidden="true">/</kbd>
   </div>
   <div class="barra-filtros__fila">
     <div class="campo campo--inline">
@@ -129,7 +130,7 @@ require __DIR__ . '/includes/nav.php';
   </div>
 <?php else: ?>
   <div class="tabla-contenedor">
-    <table class="tabla-datos">
+    <table class="tabla-datos tabla-datos--lista">
       <thead>
         <tr>
           <th>Folio</th>
@@ -148,15 +149,15 @@ require __DIR__ . '/includes/nav.php';
         <?php foreach ($lista['items'] as $s): ?>
           <?php $folio_url = rawurlencode((string) $s['folio']); ?>
           <tr>
-            <td class="texto-mono texto-negrita"><?= e($s['folio']) ?></td>
-            <td><?= e($s['cliente_mostrar'] ?? $s['nombre_contacto']) ?></td>
-            <td><?= e($s['sector']) ?><span class="tabla-datos__sublinea"><?= e($s['escala']) ?></span></td>
-            <td><span class="badge-prioridad badge-prioridad--<?= e(mb_strtolower(nivel_prioridad((int) $s['prioridad']))) ?>"><?= e(formatear_prioridad((int) $s['prioridad'])) ?></span></td>
-            <td><?= e($s['servicio_nombre']) ?></td>
-            <td><span class="badge-estado badge-estado--<?= e($clase_estado((string) $s['estado'])) ?>">[<?= e($s['estado']) ?>]</span></td>
-            <td><?= e($s['canal_origen']) ?></td>
-            <td><?= e(formatear_fecha_corta($s['fecha_registro'])) ?></td>
-            <td><?= e(formatear_fecha_corta($s['fecha_visita'], true)) ?></td>
+            <td class="texto-mono texto-negrita" data-label="Folio"><?= e($s['folio']) ?></td>
+            <td data-label="Cliente"><?= e($s['cliente_mostrar'] ?? $s['nombre_contacto']) ?></td>
+            <td data-label="Lugar · tamaño"><?= e($s['sector']) ?><span class="tabla-datos__sublinea"><?= e($s['escala']) ?></span></td>
+            <td data-label="Prioridad"><span class="badge-prioridad badge-prioridad--<?= e(mb_strtolower(nivel_prioridad((int) $s['prioridad']))) ?>"><?= e(formatear_prioridad((int) $s['prioridad'])) ?></span></td>
+            <td data-label="Servicio"><?= e($s['servicio_nombre']) ?></td>
+            <td data-label="Estado"><span class="badge-estado badge-estado--<?= e($clase_estado((string) $s['estado'])) ?>"><?= e($s['estado']) ?></span></td>
+            <td data-label="Canal"><?= e($s['canal_origen']) ?></td>
+            <td data-label="Registro"><?= e(formatear_fecha_corta($s['fecha_registro'])) ?></td>
+            <td data-label="Visita"><?= e(formatear_fecha_corta($s['fecha_visita'], true)) ?></td>
             <td class="tabla-datos__acciones">
               <a href="editar.php?folio=<?= e($folio_url) ?>&amp;modo=ver">Ver</a> ·
               <a href="editar.php?folio=<?= e($folio_url) ?>">Editar</a> ·
