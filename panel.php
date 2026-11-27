@@ -92,36 +92,19 @@ if ($es_admin) {
   <p class="estado-vacio__texto">Las solicitudes nuevas aparecerán aquí.</p>
 </div>
     <?php else: ?>
-<div class="tabla-contenedor">
-  <table class="tabla-datos">
-    <thead>
-      <tr>
-        <th>Folio</th>
-        <th>Cliente</th>
-        <th>Tipo de lugar</th>
-        <th>Prioridad</th>
-        <th>Servicio</th>
-        <th>Recibida</th>
-        <th aria-label="Acciones"></th>
-      </tr>
-    </thead>
-    <tbody>
-      <?php foreach ($atender as $s): ?>
-        <tr>
-          <td class="texto-mono texto-negrita"><?= e($s['folio']) ?></td>
-          <td><?= e($s['cliente_mostrar'] ?? $s['nombre_contacto']) ?></td>
-          <td><?= e($s['sector']) ?> · <?= e($s['escala']) ?></td>
-          <td><span class="badge-prioridad badge-prioridad--<?= e(mb_strtolower(nivel_prioridad((int) $s['prioridad']))) ?>"><?= e(formatear_prioridad((int) $s['prioridad'])) ?></span></td>
-          <td><?= e($s['servicio_nombre']) ?></td>
-          <td><?= e(formatear_fecha_relativa((string) $s['fecha_registro'])) ?></td>
-          <td class="tabla-datos__acciones">
-            <a href="editar.php?folio=<?= e(rawurlencode((string) $s['folio'])) ?>" class="btn btn--secundario btn--pequeno">Revisar</a>
-          </td>
-        </tr>
-      <?php endforeach; ?>
-    </tbody>
-  </table>
-</div>
+<ul class="lista-paleta lista-paleta--panel">
+  <?php foreach ($atender as $s): ?>
+    <li class="lista-paleta__fila">
+      <span class="badge-prioridad badge-prioridad--<?= e(mb_strtolower(nivel_prioridad((int) $s['prioridad']))) ?>"><?= e(formatear_prioridad((int) $s['prioridad'])) ?></span>
+      <span class="lista-paleta__principal">
+        <span class="lista-paleta__titulo"><span class="texto-mono texto-negrita"><?= e($s['folio']) ?></span> · <?= e($s['cliente_mostrar'] ?? $s['nombre_contacto']) ?></span>
+        <span class="lista-paleta__sub"><?= e($s['servicio_nombre']) ?> · <?= e($s['sector']) ?> · <?= e($s['escala']) ?></span>
+      </span>
+      <span class="lista-paleta__meta"><?= e(formatear_fecha_relativa((string) $s['fecha_registro'])) ?></span>
+      <a href="editar.php?folio=<?= e(rawurlencode((string) $s['folio'])) ?>" class="btn btn--secundario btn--pequeno">Revisar</a>
+    </li>
+  <?php endforeach; ?>
+</ul>
     <?php endif; ?>
 
 <section class="kpis-grid">
@@ -173,7 +156,7 @@ $tarjeta = static function (array $s, bool $detallada) use ($etapas, $clase_esta
           <strong class="tarjeta-solicitud__folio"><?= e($s['folio']) ?></strong>
           <p class="tarjeta-solicitud__subtitulo"><?= e($s['servicio_nombre']) ?> · <?= e($s['sector']) ?> · <?= e($s['escala']) ?> · Registrada <?= e(formatear_fecha($s['fecha_registro'])) ?></p>
         </div>
-        <span class="badge-estado badge-estado--<?= e($clase_estado((string) $s['estado'])) ?>">[<?= e($s['estado']) ?>]</span>
+        <span class="badge-estado badge-estado--<?= e($clase_estado((string) $s['estado'])) ?>"><?= e($s['estado']) ?></span>
       </header>
 
       <?php if ($indice !== false): ?>
@@ -253,7 +236,7 @@ require __DIR__ . '/includes/nav.php';
                 <strong class="tarjeta-solicitud__folio"><?= e($s['folio']) ?></strong>
                 <p class="tarjeta-solicitud__subtitulo"><?= e($s['servicio_nombre']) ?> · <?= e($s['sector']) ?> · Registrada <?= e(formatear_fecha($s['fecha_registro'])) ?></p>
               </div>
-              <span class="badge-estado badge-estado--<?= e($clase_estado((string) $s['estado'])) ?>">[<?= e($s['estado']) ?>]</span>
+              <span class="badge-estado badge-estado--<?= e($clase_estado((string) $s['estado'])) ?>"><?= e($s['estado']) ?></span>
               <a href="panel.php?ver=<?= e(rawurlencode((string) $s['folio'])) ?>">Ver detalle</a>
             </header>
           </article>
