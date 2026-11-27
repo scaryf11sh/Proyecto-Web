@@ -411,8 +411,49 @@
     });
   }
 
+  function inicializarTema() {
+    var boton = document.querySelector('[data-toggle-tema]');
+    if (!boton) return;
+    var raiz = document.documentElement;
+    function esClaro() {
+      var t = raiz.dataset.theme;
+      if (t === 'light' || t === 'dark') return t === 'light';
+      return true;
+    }
+    function actualizar() {
+      var claro = esClaro();
+      boton.setAttribute('aria-pressed', claro ? 'true' : 'false');
+      var texto = claro ? 'Modo oscuro' : 'Modo claro';
+      boton.setAttribute('aria-label', texto);
+      boton.setAttribute('title', texto);
+    }
+    boton.addEventListener('click', function () {
+      var siguiente = esClaro() ? 'dark' : 'light';
+      raiz.dataset.theme = siguiente;
+      try { localStorage.setItem('oem-theme', siguiente); } catch (e) {}
+      actualizar();
+      document.dispatchEvent(new CustomEvent('oem-tema'));
+    });
+    actualizar();
+  }
+
+  function inicializarAtajoBusqueda() {
+    var busqueda = document.querySelector('.barra-filtros__busqueda input');
+    if (!busqueda) return;
+    document.addEventListener('keydown', function (evento) {
+      if (evento.key !== '/' || evento.ctrlKey || evento.metaKey || evento.altKey) return;
+      var objetivo = evento.target;
+      var tag = objetivo && objetivo.tagName ? objetivo.tagName.toLowerCase() : '';
+      if (tag === 'input' || tag === 'textarea' || tag === 'select' || (objetivo && objetivo.isContentEditable)) return;
+      evento.preventDefault();
+      busqueda.focus();
+    });
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
     inicializarMenuNavegacion();
+    inicializarTema();
+    inicializarAtajoBusqueda();
     inicializarMascaraTelefono();
     inicializarTogglePassword();
     inicializarPrioridadEnVivo();

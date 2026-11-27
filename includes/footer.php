@@ -35,7 +35,7 @@ $ruta_raiz = $ruta_raiz ?? (function_exists('prefijo_raiz') ? prefijo_raiz() : '
   <p>OEM Solicitudes · © 2026 Obras Eléctricas Mendivil</p>
 </footer>
 <?php endif; ?>
-<script src="<?= e($ruta_raiz) ?>js/app.js"></script>
-<script src="<?= e($ruta_raiz) ?>js/reportes.js"></script>
+<script src="<?= e($ruta_raiz) ?>js/app.js?v=<?= filemtime(__DIR__ . '/../js/app.js') ?>"></script>
+<script src="<?= e($ruta_raiz) ?>js/reportes.js?v=<?= filemtime(__DIR__ . '/../js/reportes.js') ?>"></script>
 </body>
 </html>
