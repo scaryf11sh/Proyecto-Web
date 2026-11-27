@@ -183,14 +183,11 @@ La base `oem_solicitudes` contiene tres tablas en InnoDB con `utf8mb4_unicode_ci
 │   └── footer.php
 ├── css/
 │   └── styles.css
+├── img/
+│   └── panel-admin.png
 ├── js/
 │   ├── app.js
 │   └── reportes.js
-├── img/
-│   ├── hero-instalacion.svg
-│   ├── sector-industrial.svg
-│   ├── sector-comercial.svg
-│   └── sector-residencial.svg
 ├── sql/
 │   └── oem_solicitudes.sql
 └── docs/
