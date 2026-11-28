@@ -892,3 +892,6 @@ a.tarjeta-kpi:hover::after { border-color: var(--texto); transform: translateX(2
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
 }
+
+.dialogo-modal { width: min(38rem, calc(100% - 2rem)); margin: auto; color: var(--texto); }
+.dialogo-modal::backdrop { background: rgba(0, 0, 0, 0.45); }

@@ -295,12 +295,48 @@
 
   function inicializarConfirmaciones() {
     var formularios = document.querySelectorAll('form[data-confirmar]');
+    if (!formularios.length) return;
+    var dialogo = document.createElement('dialog');
+    dialogo.className = 'dialogo-modal dialogo-tarjeta';
+    dialogo.setAttribute('aria-labelledby', 'confirmar-titulo');
+    dialogo.innerHTML = '<h2 class="dialogo-tarjeta__titulo" id="confirmar-titulo"></h2>' +
+      '<p class="dialogo-tarjeta__texto"></p>' +
+      '<div class="dialogo-tarjeta__acciones">' +
+      '<button type="button" class="btn btn--secundario" data-cancelar>Cancelar</button>' +
+      '<button type="button" class="btn" data-aceptar></button></div>';
+    document.body.appendChild(dialogo);
+    var formActual = null;
+    var disparador = null;
+    var botonOk = dialogo.querySelector('[data-aceptar]');
+
+    dialogo.querySelector('[data-cancelar]').addEventListener('click', function () { dialogo.close(); });
+    botonOk.addEventListener('click', function () {
+      var form = formActual;
+      dialogo.close();
+      if (form) { form.setAttribute('data-confirmado', 'true'); form.requestSubmit(); }
+    });
+    dialogo.addEventListener('close', function () {
+      if (disparador && document.contains(disparador)) disparador.focus();
+    });
+
     formularios.forEach(function (form) {
       form.addEventListener('submit', function (evento) {
+        if (form.getAttribute('data-confirmado') === 'true') return;
         var mensaje = form.getAttribute('data-confirmar');
-        if (mensaje && !window.confirm(mensaje)) {
-          evento.preventDefault();
+        if (!mensaje) return;
+        evento.preventDefault();
+        if (typeof dialogo.showModal !== 'function') {
+          if (window.confirm(mensaje)) { form.setAttribute('data-confirmado', 'true'); form.submit(); }
+          return;
         }
+        formActual = form;
+        disparador = document.activeElement;
+        dialogo.querySelector('h2').textContent = form.getAttribute('data-confirmar-titulo') || 'Confirmar';
+        dialogo.querySelector('p').textContent = mensaje;
+        botonOk.textContent = form.getAttribute('data-confirmar-ok') || 'Aceptar';
+        botonOk.className = 'btn ' + (form.getAttribute('data-confirmar-tipo') === 'peligro' ? 'btn--peligro' : 'btn--primario');
+        dialogo.showModal();
+        botonOk.focus();
       });
     });
   }

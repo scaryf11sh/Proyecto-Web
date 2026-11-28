@@ -209,7 +209,7 @@ $tarjeta = static function (array $s, bool $detallada) use ($etapas, $clase_esta
         <footer class="tarjeta-solicitud__pie">
           <span class="tarjeta-solicitud__aviso">Puede modificarla o eliminarla mientras esté Enviada.</span>
           <a href="crear.php?folio=<?= e(rawurlencode((string) $s['folio'])) ?>" class="btn btn--enlace">Editar</a>
-          <form method="post" action="panel.php" data-confirmar="¿Desea eliminar esta solicitud? No se puede deshacer.">
+          <form method="post" action="panel.php" data-confirmar="¿Eliminar la solicitud <?= e($s['folio']) ?>? Esta acción no se puede deshacer." data-confirmar-titulo="Eliminar solicitud" data-confirmar-ok="Eliminar solicitud" data-confirmar-tipo="peligro">
             <?= csrf_campo() ?>
             <input type="hidden" name="accion" value="eliminar">
             <input type="hidden" name="id_solicitud" value="<?= e($s['id_solicitud']) ?>">
@@ -221,7 +221,7 @@ $tarjeta = static function (array $s, bool $detallada) use ($etapas, $clase_esta
       <?php if ($s['estado'] === 'Presupuesto'): ?>
         <footer class="tarjeta-solicitud__pie">
           <span class="tarjeta-solicitud__aviso">Su presupuesto está listo.</span>
-          <form method="post" action="panel.php" data-confirmar="¿Desea aceptar el presupuesto de esta solicitud?">
+          <form method="post" action="panel.php" data-confirmar="¿Aceptar el presupuesto de la solicitud <?= e($s['folio']) ?>?" data-confirmar-titulo="Aceptar presupuesto" data-confirmar-ok="Aceptar presupuesto" data-confirmar-tipo="primario">
             <?= csrf_campo() ?>
             <input type="hidden" name="accion" value="aceptar">
             <input type="hidden" name="id_solicitud" value="<?= e($s['id_solicitud']) ?>">
