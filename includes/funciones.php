@@ -6,8 +6,6 @@ require_once __DIR__ . '/auth.php';
 
 const SECTORES = ['Industrial', 'Comercial', 'Residencial'];
 const ESCALAS = ['Grande', 'Mediano', 'Pequeño'];
-const CANALES = ['Web', 'WhatsApp', 'Llamada', 'Recomendación'];
-const CANALES_ADMIN = ['WhatsApp', 'Llamada', 'Recomendación'];
 const ESTADOS = ['Enviada', 'En revisión', 'Visita agendada', 'Presupuesto', 'Aceptada', 'En progreso', 'Finalizada', 'Rechazada', 'Cancelada'];
 const ESTADOS_CERRADOS = ['Finalizada', 'Rechazada', 'Cancelada'];
 const DIAS_SEMANA = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
@@ -197,14 +195,8 @@ function etapas_seguimiento(): array
     return ['Enviada', 'En revisión', 'Visita agendada', 'Presupuesto', 'Aceptada', 'En progreso', 'Finalizada'];
 }
 
-function estados_permitidos(string $actual, string $rol = 'Administrador'): array
+function estados_permitidos(string $actual): array
 {
-    if ($rol === 'Cliente') {
-        return es_cancelable_por_cliente($actual) ? ['Cancelada'] : [];
-    }
-    if ($rol !== 'Administrador') {
-        return [];
-    }
     $transiciones = [
         'Enviada' => ['En revisión', 'Cancelada'],
         'En revisión' => ['Visita agendada', 'Rechazada', 'Cancelada'],
@@ -219,32 +211,22 @@ function estados_permitidos(string $actual, string $rol = 'Administrador'): arra
     return $transiciones[$actual] ?? [];
 }
 
-function es_cancelable_por_cliente(string $estado): bool
-{
-    return $estado === 'Enviada' || $estado === 'En revisión';
-}
-
 function cambiar_estado(
     int $id_solicitud,
     string $nuevo_estado,
-    string $rol,
-    ?string $fecha_visita = null,
-    ?int $id_usuario_cliente = null
+    ?string $fecha_visita = null
 ): array {
     $pdo = db();
     $pdo->beginTransaction();
     try {
-        $stmt = $pdo->prepare('SELECT id_usuario, estado, fecha_visita FROM solicitud WHERE id_solicitud = :id FOR UPDATE');
+        $stmt = $pdo->prepare('SELECT estado, fecha_visita FROM solicitud WHERE id_solicitud = :id FOR UPDATE');
         $stmt->execute([':id' => $id_solicitud]);
         $fila = $stmt->fetch();
 
         $errores = [];
         if (!$fila) {
             $errores['solicitud'] = 'La solicitud no existe.';
-        } elseif ($rol === 'Cliente' && ($id_usuario_cliente === null || (int) $fila['id_usuario'] !== $id_usuario_cliente)) {
-            // Se responde igual que si no existiera para no filtrar solicitudes ajenas.
-            $errores['solicitud'] = 'La solicitud no existe.';
-        } elseif (!in_array($nuevo_estado, estados_permitidos((string) $fila['estado'], $rol), true)) {
+        } elseif (!in_array($nuevo_estado, estados_permitidos((string) $fila['estado']), true)) {
             $errores['estado'] = "No se puede cambiar de {$fila['estado']} a {$nuevo_estado}.";
         }
 
@@ -283,15 +265,11 @@ function validar_registro(array $datos): array
 {
     $errores = [];
     $nombre = trim((string) ($datos['nombre'] ?? ''));
-    $empresa = trim((string) ($datos['empresa'] ?? ''));
     $correo = trim((string) ($datos['correo'] ?? ''));
     $contrasena = (string) ($datos['contrasena'] ?? '');
 
     if ($nombre === '' || mb_strlen($nombre) > 100) {
         $errores['nombre'] = 'El nombre completo o razón social es obligatorio.';
-    }
-    if (mb_strlen($empresa) > 100) {
-        $errores['empresa'] = 'El nombre de la empresa no puede exceder 100 caracteres.';
     }
     if ($correo === '' || mb_strlen($correo) > 120 || filter_var($correo, FILTER_VALIDATE_EMAIL) === false) {
         $errores['correo'] = 'Ingrese un correo electrónico válido.';
@@ -320,41 +298,31 @@ function validar_registro(array $datos): array
 function validar_solicitud(array $datos, string $modo = 'crear_cliente', ?string $estado_actual = null): array
 {
     $errores = [];
-    $crea = $modo === 'crear_cliente' || $modo === 'crear_admin';
 
-    if ($modo === 'crear_admin' && !in_array((string) ($datos['canal_origen'] ?? ''), CANALES_ADMIN, true)) {
-        $errores['canal_origen'] = 'Seleccione un canal de origen válido.';
-    }
-    if (!in_array((string) ($datos['sector'] ?? ''), SECTORES, true)) {
-        $errores['sector'] = 'Seleccione el tipo de lugar.';
-    }
-    if (!in_array((string) ($datos['escala'] ?? ''), ESCALAS, true)) {
-        $errores['escala'] = 'Seleccione el tamaño del trabajo.';
-    }
+    if ($modo !== 'editar_admin') {
+        if (!in_array((string) ($datos['sector'] ?? ''), SECTORES, true)) {
+            $errores['sector'] = 'Seleccione el tipo de lugar.';
+        }
+        if (!in_array((string) ($datos['escala'] ?? ''), ESCALAS, true)) {
+            $errores['escala'] = 'Seleccione el tamaño del trabajo.';
+        }
 
-    $id_servicio = (int) ($datos['id_servicio'] ?? 0);
-    $stmt = db()->prepare('SELECT activo FROM servicio WHERE id_servicio = :id');
-    $stmt->execute([':id' => $id_servicio]);
-    $activo = $stmt->fetchColumn();
-    if ($activo === false) {
-        $errores['id_servicio'] = 'Seleccione un servicio válido.';
-    } elseif ($crea && (int) $activo !== 1) {
-        $errores['id_servicio'] = 'El servicio seleccionado no está disponible.';
-    }
+        $stmt = db()->prepare('SELECT activo FROM servicio WHERE id_servicio = :id');
+        $stmt->execute([':id' => (int) ($datos['id_servicio'] ?? 0)]);
+        $activo = $stmt->fetchColumn();
+        if ($activo === false) {
+            $errores['id_servicio'] = 'Seleccione un servicio válido.';
+        } elseif ((int) $activo !== 1) {
+            $errores['id_servicio'] = 'El servicio seleccionado no está disponible.';
+        }
 
-    if (trim((string) ($datos['descripcion'] ?? '')) === '') {
-        $errores['descripcion'] = 'La descripción es obligatoria.';
-    }
-    $ubicacion = trim((string) ($datos['ubicacion'] ?? ''));
-    if ($ubicacion === '' || mb_strlen($ubicacion) > 200) {
-        $errores['ubicacion'] = 'La ubicación es obligatoria (máximo 200 caracteres).';
-    }
-    $contacto = trim((string) ($datos['nombre_contacto'] ?? ''));
-    if ($contacto === '' || mb_strlen($contacto) > 100) {
-        $errores['nombre_contacto'] = 'El nombre de contacto es obligatorio (máximo 100 caracteres).';
-    }
-    if (strlen(limpiar_telefono((string) ($datos['telefono_contacto'] ?? ''))) !== 10) {
-        $errores['telefono_contacto'] = 'Ingrese un teléfono válido de 10 dígitos.';
+        if (trim((string) ($datos['descripcion'] ?? '')) === '') {
+            $errores['descripcion'] = 'La descripción es obligatoria.';
+        }
+        $ubicacion = trim((string) ($datos['ubicacion'] ?? ''));
+        if ($ubicacion === '' || mb_strlen($ubicacion) > 200) {
+            $errores['ubicacion'] = 'La ubicación es obligatoria (máximo 200 caracteres).';
+        }
     }
 
     if ($modo === 'editar_admin') {
@@ -362,7 +330,7 @@ function validar_solicitud(array $datos, string $modo = 'crear_cliente', ?string
         if (!in_array($estado, ESTADOS, true)) {
             $errores['estado'] = 'Seleccione un estado válido.';
         } elseif ($estado_actual !== null && $estado !== $estado_actual
-            && !in_array($estado, estados_permitidos($estado_actual, 'Administrador'), true)) {
+            && !in_array($estado, estados_permitidos($estado_actual), true)) {
             $errores['estado'] = "No se puede cambiar de {$estado_actual} a {$estado}.";
         }
 
@@ -396,22 +364,21 @@ function validar_servicio(array $datos, ?int $id_servicio_actual = null): array
 
 function sql_base_solicitud(bool $con_notas = true): string
 {
-    return 'SELECT s.id_solicitud, s.folio, s.id_usuario, s.nombre_contacto, s.telefono_contacto, s.sector, s.escala,
-                s.id_servicio, sv.nombre AS servicio_nombre, s.descripcion, s.ubicacion, s.canal_origen, s.prioridad,
+    return 'SELECT s.id_solicitud, s.folio, s.id_usuario, s.sector, s.escala,
+                s.id_servicio, sv.nombre AS servicio_nombre, s.descripcion, s.ubicacion, s.prioridad,
                 s.estado, s.fecha_visita, '
         . ($con_notas ? 's.notas_internas, ' : '')
         . 's.fecha_registro, s.fecha_actualizacion,
-                u.nombre AS usuario_nombre, u.empresa AS usuario_empresa, u.correo AS usuario_correo,
-                COALESCE(NULLIF(u.empresa, \'\'), u.nombre, s.nombre_contacto) AS cliente_mostrar
+                u.nombre AS usuario_nombre, u.telefono AS usuario_telefono, u.correo AS usuario_correo
          FROM solicitud s
          JOIN servicio sv ON sv.id_servicio = s.id_servicio
-         LEFT JOIN usuario u ON u.id_usuario = s.id_usuario';
+         JOIN usuario u ON u.id_usuario = s.id_usuario';
 }
 
 function normalizar_fila_solicitud(array $fila): array
 {
     $fila['id_solicitud'] = (int) $fila['id_solicitud'];
-    $fila['id_usuario'] = $fila['id_usuario'] !== null ? (int) $fila['id_usuario'] : null;
+    $fila['id_usuario'] = (int) $fila['id_usuario'];
     $fila['id_servicio'] = (int) $fila['id_servicio'];
     $fila['prioridad'] = (int) $fila['prioridad'];
     return $fila;
@@ -439,55 +406,21 @@ function texto_o_null(mixed $valor): ?string
     return $valor === '' ? null : $valor;
 }
 
-function crear_solicitud(array $datos, string $rol_creador, ?int $id_usuario_sesion = null): array
+function crear_solicitud(array $datos, int $id_usuario): array
 {
-    $fallo = static fn(array $errores): array => ['ok' => false, 'errores' => $errores, 'folio' => null, 'id_solicitud' => null];
-
-    if ($rol_creador === 'Cliente') {
-        $modo = 'crear_cliente';
-        $cuenta = $id_usuario_sesion !== null ? obtener_usuario($id_usuario_sesion) : null;
-        if ($cuenta === null) {
-            return $fallo(['usuario' => 'Debe iniciar sesión para crear una solicitud.']);
-        }
-        // Con "usar datos de la cuenta" o sin contacto escrito se toman los datos de la cuenta, no del formulario.
-        if (!empty($datos['usar_datos_cuenta']) || trim((string) ($datos['nombre_contacto'] ?? '')) === '') {
-            $datos['nombre_contacto'] = $cuenta['nombre'];
-        }
-        if (!empty($datos['usar_datos_cuenta']) || trim((string) ($datos['telefono_contacto'] ?? '')) === '') {
-            $datos['telefono_contacto'] = $cuenta['telefono'];
-        }
-        $canal = 'Web';
-        $id_usuario = $id_usuario_sesion;
-        $notas = null;
-    } elseif ($rol_creador === 'Administrador') {
-        $modo = 'crear_admin';
-        $canal = (string) ($datos['canal_origen'] ?? '');
-        $id_usuario = (!empty($datos['id_usuario']) && empty($datos['sin_cuenta'])) ? (int) $datos['id_usuario'] : null;
-        $notas = texto_o_null($datos['notas_internas'] ?? '');
-    } else {
-        return $fallo(['usuario' => 'Rol no autorizado para crear solicitudes.']);
-    }
-
-    $errores = validar_solicitud($datos, $modo);
-    if ($id_usuario !== null && $rol_creador === 'Administrador' && obtener_usuario($id_usuario) === null) {
-        $errores['id_usuario'] = 'La cuenta seleccionada no existe.';
-    }
+    $errores = validar_solicitud($datos);
     if ($errores !== []) {
-        return $fallo($errores);
+        return ['ok' => false, 'errores' => $errores, 'folio' => null, 'id_solicitud' => null];
     }
 
     $valores = [
         ':id_usuario' => $id_usuario,
-        ':nombre_contacto' => trim((string) $datos['nombre_contacto']),
-        ':telefono_contacto' => limpiar_telefono((string) $datos['telefono_contacto']),
         ':sector' => (string) $datos['sector'],
         ':escala' => (string) $datos['escala'],
         ':id_servicio' => (int) $datos['id_servicio'],
         ':descripcion' => trim((string) $datos['descripcion']),
         ':ubicacion' => trim((string) $datos['ubicacion']),
-        ':canal_origen' => $canal,
         ':prioridad' => calcular_prioridad((string) $datos['sector'], (string) $datos['escala']),
-        ':notas_internas' => $notas,
     ];
 
     $pdo = db();
@@ -497,10 +430,10 @@ function crear_solicitud(array $datos, string $rol_creador, ?int $id_usuario_ses
         try {
             $folio = generar_folio($pdo);
             $stmt = $pdo->prepare(
-                "INSERT INTO solicitud (folio, id_usuario, nombre_contacto, telefono_contacto, sector, escala, id_servicio,
-                    descripcion, ubicacion, canal_origen, prioridad, estado, notas_internas)
-                 VALUES (:folio, :id_usuario, :nombre_contacto, :telefono_contacto, :sector, :escala, :id_servicio,
-                    :descripcion, :ubicacion, :canal_origen, :prioridad, 'Enviada', :notas_internas)"
+                "INSERT INTO solicitud (folio, id_usuario, sector, escala, id_servicio,
+                    descripcion, ubicacion, prioridad, estado)
+                 VALUES (:folio, :id_usuario, :sector, :escala, :id_servicio,
+                    :descripcion, :ubicacion, :prioridad, 'Enviada')"
             );
             $stmt->execute($valores + [':folio' => $folio]);
             $id = (int) $pdo->lastInsertId();
@@ -517,6 +450,44 @@ function crear_solicitud(array $datos, string $rol_creador, ?int $id_usuario_ses
         }
     }
     throw new RuntimeException('No fue posible generar un folio único.');
+}
+
+// El cliente solo edita sus solicitudes mientras estén Enviadas; la condición del UPDATE lo garantiza.
+function editar_solicitud_cliente(int $id_solicitud, int $id_usuario, array $datos): array
+{
+    $errores = validar_solicitud($datos, 'editar_cliente');
+    if ($errores !== []) {
+        return ['ok' => false, 'errores' => $errores];
+    }
+
+    $stmt = db()->prepare(
+        "UPDATE solicitud SET sector = :sector, escala = :escala, id_servicio = :id_servicio,
+            descripcion = :descripcion, ubicacion = :ubicacion, prioridad = :prioridad
+         WHERE id_solicitud = :id AND id_usuario = :id_usuario AND estado = 'Enviada'"
+    );
+    $stmt->execute([
+        ':sector' => (string) $datos['sector'],
+        ':escala' => (string) $datos['escala'],
+        ':id_servicio' => (int) $datos['id_servicio'],
+        ':descripcion' => trim((string) $datos['descripcion']),
+        ':ubicacion' => trim((string) $datos['ubicacion']),
+        ':prioridad' => calcular_prioridad((string) $datos['sector'], (string) $datos['escala']),
+        ':id' => $id_solicitud,
+        ':id_usuario' => $id_usuario,
+    ]);
+    // rowCount también es 0 si no hubo cambios, así que se consulta el estado real.
+    $propia = obtener_solicitud_por_id($id_solicitud);
+    if ($propia === null || $propia['id_usuario'] !== $id_usuario || $propia['estado'] !== 'Enviada') {
+        return ['ok' => false, 'errores' => ['solicitud' => 'Esta solicitud ya no se puede modificar.']];
+    }
+    return ['ok' => true, 'errores' => []];
+}
+
+function eliminar_solicitud_cliente(int $id_solicitud, int $id_usuario): bool
+{
+    $stmt = db()->prepare("DELETE FROM solicitud WHERE id_solicitud = :id AND id_usuario = :id_usuario AND estado = 'Enviada'");
+    $stmt->execute([':id' => $id_solicitud, ':id_usuario' => $id_usuario]);
+    return $stmt->rowCount() > 0;
 }
 
 function actualizar_solicitud(int $id_solicitud, array $datos): array
@@ -538,21 +509,10 @@ function actualizar_solicitud(int $id_solicitud, array $datos): array
         : $actual['fecha_visita'];
 
     $stmt = db()->prepare(
-        'UPDATE solicitud SET nombre_contacto = :nombre_contacto, telefono_contacto = :telefono_contacto,
-            sector = :sector, escala = :escala, id_servicio = :id_servicio, descripcion = :descripcion,
-            ubicacion = :ubicacion, prioridad = :prioridad, estado = :estado, fecha_visita = :fecha_visita,
-            notas_internas = :notas_internas
+        'UPDATE solicitud SET estado = :estado, fecha_visita = :fecha_visita, notas_internas = :notas_internas
          WHERE id_solicitud = :id'
     );
     $stmt->execute([
-        ':nombre_contacto' => trim((string) $datos['nombre_contacto']),
-        ':telefono_contacto' => limpiar_telefono((string) $datos['telefono_contacto']),
-        ':sector' => (string) $datos['sector'],
-        ':escala' => (string) $datos['escala'],
-        ':id_servicio' => (int) $datos['id_servicio'],
-        ':descripcion' => trim((string) $datos['descripcion']),
-        ':ubicacion' => trim((string) $datos['ubicacion']),
-        ':prioridad' => calcular_prioridad((string) $datos['sector'], (string) $datos['escala']),
         ':estado' => $datos['estado'],
         ':fecha_visita' => $visita,
         ':notas_internas' => texto_o_null($datos['notas_internas'] ?? ''),
@@ -583,18 +543,12 @@ function listar_solicitudes_admin(array $filtros = [], int $pagina = 1, int $por
         $like = '%' . escapar_like($q) . '%';
         $digitos = limpiar_telefono($q);
         $like_tel = $digitos !== '' ? '%' . $digitos . '%' : $like;
-        $donde[] = '(s.folio LIKE :q_folio OR s.nombre_contacto LIKE :q_contacto OR u.nombre LIKE :q_usuario
-                     OR u.empresa LIKE :q_empresa OR s.telefono_contacto LIKE :q_telefono)';
-        $params += [
-            ':q_folio' => $like, ':q_contacto' => $like, ':q_usuario' => $like,
-            ':q_empresa' => $like, ':q_telefono' => $like_tel,
-        ];
+        $donde[] = '(s.folio LIKE :q_folio OR u.nombre LIKE :q_usuario OR u.telefono LIKE :q_telefono)';
+        $params += [':q_folio' => $like, ':q_usuario' => $like, ':q_telefono' => $like_tel];
     }
 
-    $canal = $filtros['canal'] ?? $filtros['canal_origen'] ?? '';
     foreach ([['estado', 's.estado', ESTADOS, $filtros['estado'] ?? ''],
-              ['sector', 's.sector', SECTORES, $filtros['sector'] ?? ''],
-              ['canal', 's.canal_origen', CANALES, $canal]] as [$clave, $columna, $validos, $valor]) {
+              ['sector', 's.sector', SECTORES, $filtros['sector'] ?? '']] as [$clave, $columna, $validos, $valor]) {
         if (in_array((string) $valor, $validos, true)) {
             $donde[] = "{$columna} = :f_{$clave}";
             $params[":f_{$clave}"] = (string) $valor;
@@ -613,7 +567,7 @@ function listar_solicitudes_admin(array $filtros = [], int $pagina = 1, int $por
     }
     $clausula = $donde === [] ? '' : ' WHERE ' . implode(' AND ', $donde);
 
-    $stmt = db()->prepare('SELECT COUNT(*) FROM solicitud s LEFT JOIN usuario u ON u.id_usuario = s.id_usuario' . $clausula);
+    $stmt = db()->prepare('SELECT COUNT(*) FROM solicitud s JOIN usuario u ON u.id_usuario = s.id_usuario' . $clausula);
     $stmt->execute($params);
     $total = (int) $stmt->fetchColumn();
 
@@ -742,16 +696,6 @@ function obtener_reportes(string $desde = '2026-07-01', string $hasta = '2026-10
     $total = (int) $consultar("SELECT COUNT(*) AS n FROM solicitud WHERE {$donde}")[0]['n'];
     $porcentaje = static fn(int $parte, int $todo): float => $todo > 0 ? $parte * 100 / $todo : 0.0;
 
-    $canales = array_fill_keys(CANALES, 0);
-    foreach ($consultar("SELECT canal_origen, COUNT(*) AS n FROM solicitud WHERE {$donde} GROUP BY canal_origen") as $f) {
-        $canales[$f['canal_origen']] = (int) $f['n'];
-    }
-    arsort($canales);
-    $i2 = [];
-    foreach ($canales as $canal => $cantidad) {
-        $i2[] = ['canal' => $canal, 'cantidad' => $cantidad, 'porcentaje' => (int) round($porcentaje($cantidad, $total))];
-    }
-
     $estados = array_fill_keys(ESTADOS, 0);
     foreach ($consultar("SELECT estado, COUNT(*) AS n FROM solicitud WHERE {$donde} GROUP BY estado") as $f) {
         $estados[$f['estado']] = (int) $f['n'];
@@ -806,14 +750,11 @@ function obtener_reportes(string $desde = '2026-07-01', string $hasta = '2026-10
         ],
         'kpis' => [
             'total' => $total,
-            'web_cantidad' => $canales['Web'],
-            'web_porcentaje' => (int) round($porcentaje($canales['Web'], $total)),
             'promedio_dias_visita' => (float) ($global['dias'] ?? 0),
             'total_con_visita' => (int) $global['n'],
             'activas' => $total - $cerradas,
         ],
         'i1_por_mes' => $i1,
-        'i2_por_canal' => $i2,
         'i3_por_estado' => $i3,
         'i4_tiempo_visita' => $i4,
     ];
@@ -955,61 +896,19 @@ function normalizar_fila_usuario(array $fila): array
 
 function listar_usuarios(string $busqueda = ''): array
 {
-    $sql = 'SELECT u.id_usuario, u.nombre, u.empresa, u.correo, u.telefono, u.rol, u.fecha_registro,
+    $sql = 'SELECT u.id_usuario, u.nombre, u.correo, u.telefono, u.rol, u.fecha_registro,
                    COUNT(s.id_solicitud) AS total_solicitudes
             FROM usuario u LEFT JOIN solicitud s ON s.id_usuario = u.id_usuario';
     $params = [];
     $busqueda = trim($busqueda);
     if ($busqueda !== '') {
         $like = '%' . escapar_like($busqueda) . '%';
-        $sql .= ' WHERE u.nombre LIKE :b_nombre OR u.empresa LIKE :b_empresa OR u.correo LIKE :b_correo';
-        $params = [':b_nombre' => $like, ':b_empresa' => $like, ':b_correo' => $like];
+        $sql .= ' WHERE u.nombre LIKE :b_nombre OR u.correo LIKE :b_correo';
+        $params = [':b_nombre' => $like, ':b_correo' => $like];
     }
-    $sql .= ' GROUP BY u.id_usuario, u.nombre, u.empresa, u.correo, u.telefono, u.rol, u.fecha_registro
+    $sql .= ' GROUP BY u.id_usuario, u.nombre, u.correo, u.telefono, u.rol, u.fecha_registro
               ORDER BY u.rol = \'Administrador\' DESC, u.nombre ASC';
     $stmt = db()->prepare($sql);
     $stmt->execute($params);
     return array_map('normalizar_fila_usuario', $stmt->fetchAll());
-}
-
-function obtener_usuario(int $id_usuario): ?array
-{
-    $stmt = db()->prepare('SELECT id_usuario, nombre, empresa, correo, telefono, rol, fecha_registro FROM usuario WHERE id_usuario = :id');
-    $stmt->execute([':id' => $id_usuario]);
-    $fila = $stmt->fetch();
-    return $fila ? normalizar_fila_usuario($fila) : null;
-}
-
-function cambiar_rol_usuario(int $id_usuario, string $nuevo_rol, ?int $id_admin_actual = null): array
-{
-    if (!in_array($nuevo_rol, ['Cliente', 'Administrador'], true)) {
-        return ['ok' => false, 'error' => 'El rol indicado no es válido.'];
-    }
-    $usuario = obtener_usuario($id_usuario);
-    if ($usuario === null) {
-        return ['ok' => false, 'error' => 'El usuario no existe.'];
-    }
-    if ($usuario['rol'] === $nuevo_rol) {
-        return ['ok' => true, 'error' => null];
-    }
-    if ($nuevo_rol === 'Cliente') {
-        if ($id_admin_actual !== null && $id_usuario === $id_admin_actual) {
-            return ['ok' => false, 'error' => 'No puede quitarse a sí mismo el rol de Administrador.'];
-        }
-        $admins = (int) db()->query("SELECT COUNT(*) FROM usuario WHERE rol = 'Administrador'")->fetchColumn();
-        if ($admins <= 1) {
-            return ['ok' => false, 'error' => 'Debe existir al menos un administrador.'];
-        }
-    }
-    $stmt = db()->prepare('UPDATE usuario SET rol = :rol WHERE id_usuario = :id');
-    $stmt->execute([':rol' => $nuevo_rol, ':id' => $id_usuario]);
-    return ['ok' => true, 'error' => null];
-}
-
-function listar_clientes_activos(): array
-{
-    $filas = db()->query(
-        "SELECT id_usuario, nombre, empresa, correo, telefono FROM usuario WHERE rol = 'Cliente' ORDER BY nombre ASC"
-    )->fetchAll();
-    return array_map('normalizar_fila_usuario', $filas);
 }

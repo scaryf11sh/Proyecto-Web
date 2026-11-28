@@ -1,12 +1,6 @@
 (function () {
   'use strict';
 
-  var MATRIZ_PRIORIDAD = {
-    Industrial: { Grande: 9, Mediano: 8, 'Pequeño': 3 },
-    Comercial: { Grande: 7, Mediano: 6, 'Pequeño': 2 },
-    Residencial: { Grande: 5, Mediano: 4, 'Pequeño': 1 }
-  };
-
   function limpiarDigitosTelefono(valor) {
     return String(valor || '').replace(/\D+/g, '').slice(0, 10);
   }
@@ -86,19 +80,16 @@
     var mapa = {
       correo: 'Ingrese un correo electrónico válido.',
       telefono: 'Ingrese un teléfono válido de 10 dígitos.',
-      telefono_contacto: 'Ingrese un teléfono válido de 10 dígitos.',
       contrasena: tipoFormulario === 'login'
         ? 'Ingrese su contraseña.'
         : 'La contraseña debe tener al menos 8 caracteres.',
       confirmar_contrasena: 'Las contraseñas no coinciden.',
       aviso_privacidad: 'Debe aceptar el aviso de privacidad.',
-      canal_origen: 'Seleccione un canal de origen válido.',
       sector: 'Seleccione el tipo de lugar.',
       escala: 'Seleccione el tamaño del trabajo.',
       id_servicio: 'Seleccione un servicio válido.',
       descripcion: 'La descripción es obligatoria.',
       ubicacion: 'La ubicación es obligatoria (máximo 200 caracteres).',
-      nombre_contacto: 'El nombre de contacto es obligatorio (máximo 100 caracteres).',
       fecha_visita: 'Requerida para Visita agendada'
     };
     return mapa[nombre] || 'Este campo es obligatorio.';
@@ -257,19 +248,7 @@
     });
   }
 
-  function obtenerValorCampo(nombre) {
-    var radio = document.querySelector('input[type="radio"][name="' + nombre + '"]:checked');
-    if (radio) return radio.value;
-    var select = document.querySelector('select[name="' + nombre + '"]');
-    return select ? select.value : '';
-  }
-
-  function nivelPrioridad(valor) {
-    if (valor >= 7) return 'Alta';
-    return valor >= 4 ? 'Media' : 'Baja';
-  }
-
-  function actualizarPrioridadYRadios() {
+  function actualizarTarjetasOpcion() {
     var radios = document.querySelectorAll('.tarjeta-opcion__input');
     radios.forEach(function (radio) {
       var tarjeta = radio.closest('.tarjeta-opcion');
@@ -277,28 +256,16 @@
         tarjeta.classList.toggle('tarjeta-opcion--activa', radio.checked);
       }
     });
-
-    var salida = document.getElementById('texto-prioridad-calculada');
-    if (!salida) return;
-
-    var sector = obtenerValorCampo('sector');
-    var escala = obtenerValorCampo('escala');
-    if (MATRIZ_PRIORIDAD[sector] && MATRIZ_PRIORIDAD[sector][escala]) {
-      var p = MATRIZ_PRIORIDAD[sector][escala];
-      salida.textContent = 'Prioridad: ' + p + ' · ' + nivelPrioridad(p) + ' (calculada)';
-    } else {
-      salida.textContent = 'Se calcula con el tamaño y el tipo de lugar.';
-    }
   }
 
-  function inicializarPrioridadEnVivo() {
-    var selectores = document.querySelectorAll('[name="sector"], [name="escala"]');
+  function inicializarTarjetasOpcion() {
+    var selectores = document.querySelectorAll('.tarjeta-opcion__input');
     if (selectores.length === 0) return;
 
     selectores.forEach(function (el) {
-      el.addEventListener('change', actualizarPrioridadYRadios);
+      el.addEventListener('change', actualizarTarjetasOpcion);
     });
-    actualizarPrioridadYRadios();
+    actualizarTarjetasOpcion();
   }
 
   function inicializarFechaVisitaCondicional() {
@@ -324,56 +291,6 @@
 
     selectEstado.addEventListener('change', sincronizarRequisito);
     sincronizarRequisito();
-  }
-
-  function rellenarContacto(nombre, telefono) {
-    var inputNombre = document.getElementById('nombre_contacto');
-    var inputTelefono = document.getElementById('telefono_contacto');
-    if (inputNombre && nombre !== null) {
-      inputNombre.value = nombre;
-      limpiarErrorCampo(inputNombre);
-    }
-    if (inputTelefono && telefono !== null) {
-      inputTelefono.value = formatearMascaraTelefono(telefono);
-      limpiarErrorCampo(inputTelefono);
-    }
-  }
-
-  function inicializarTogglesContacto() {
-    var chkDatosCuenta = document.getElementById('usar-datos-cuenta');
-    if (chkDatosCuenta) {
-      chkDatosCuenta.addEventListener('change', function () {
-        if (chkDatosCuenta.checked) {
-          rellenarContacto(
-            chkDatosCuenta.getAttribute('data-nombre') || '',
-            chkDatosCuenta.getAttribute('data-telefono') || ''
-          );
-        }
-      });
-    }
-
-    var chkSinCuenta = document.getElementById('sin-cuenta');
-    var selectUsuario = document.getElementById('id_usuario');
-    if (chkSinCuenta && selectUsuario) {
-      chkSinCuenta.addEventListener('change', function () {
-        if (chkSinCuenta.checked) {
-          selectUsuario.value = '';
-          selectUsuario.disabled = true;
-        } else {
-          selectUsuario.disabled = false;
-        }
-      });
-
-      selectUsuario.addEventListener('change', function () {
-        var opcion = selectUsuario.options[selectUsuario.selectedIndex];
-        if (!opcion || !selectUsuario.value) return;
-        chkSinCuenta.checked = false;
-        rellenarContacto(
-          opcion.getAttribute('data-nombre') || '',
-          opcion.getAttribute('data-telefono') || ''
-        );
-      });
-    }
   }
 
   function inicializarConfirmaciones() {
@@ -456,9 +373,8 @@
     inicializarAtajoBusqueda();
     inicializarMascaraTelefono();
     inicializarTogglePassword();
-    inicializarPrioridadEnVivo();
+    inicializarTarjetasOpcion();
     inicializarFechaVisitaCondicional();
-    inicializarTogglesContacto();
     inicializarConfirmaciones();
     inicializarValidacionFormularios();
   });

@@ -7,27 +7,16 @@ iniciar_sesion();
 $usuario = requerir_login();
 $es_admin = es_admin();
 
-// Cancelación por el cliente: solo sobre solicitudes propias en Enviada o En revisión.
+// Eliminación por el cliente: solo sobre solicitudes propias que sigan Enviadas.
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exigir_csrf();
 
-    $accion = is_string($_POST['accion'] ?? null) ? $_POST['accion'] : '';
-    $id_solicitud = (int) ($_POST['id_solicitud'] ?? 0);
-    $propia = $id_solicitud > 0 ? obtener_solicitud_por_id($id_solicitud) : null;
-
-    if ($es_admin || $accion !== 'cancelar') {
+    if ($es_admin || ($_POST['accion'] ?? '') !== 'eliminar') {
         flash_establecer('error', 'Acción no permitida.');
-    } elseif ($propia === null || (int) $propia['id_usuario'] !== (int) $usuario['id_usuario']) {
-        flash_establecer('error', 'No se encontró la solicitud.');
-    } elseif (!es_cancelable_por_cliente((string) $propia['estado'])) {
-        flash_establecer('error', 'Esta solicitud ya no se puede cancelar.');
+    } elseif (eliminar_solicitud_cliente((int) ($_POST['id_solicitud'] ?? 0), (int) $usuario['id_usuario'])) {
+        flash_establecer('exito', 'Solicitud eliminada.');
     } else {
-        $resultado = cambiar_estado($id_solicitud, 'Cancelada', 'Cliente', null, (int) $usuario['id_usuario']);
-        if ($resultado['ok']) {
-            flash_establecer('exito', 'Solicitud ' . $propia['folio'] . ' cancelada.');
-        } else {
-            flash_establecer('error', implode(' ', $resultado['errores']) ?: 'No se pudo cancelar la solicitud.');
-        }
+        flash_establecer('error', 'No se pudo eliminar: la solicitud no existe o ya está en revisión.');
     }
     header('Location: panel.php');
     exit;
@@ -97,7 +86,7 @@ if ($es_admin) {
     <li class="lista-paleta__fila">
       <span class="badge-prioridad badge-prioridad--<?= e(mb_strtolower(nivel_prioridad((int) $s['prioridad']))) ?>"><?= e(formatear_prioridad((int) $s['prioridad'])) ?></span>
       <span class="lista-paleta__principal">
-        <span class="lista-paleta__titulo"><span class="texto-mono texto-negrita"><?= e($s['folio']) ?></span> · <?= e($s['cliente_mostrar'] ?? $s['nombre_contacto']) ?></span>
+        <span class="lista-paleta__titulo"><span class="texto-mono texto-negrita"><?= e($s['folio']) ?></span> · <?= e($s['usuario_nombre']) ?></span>
         <span class="lista-paleta__sub"><?= e($s['servicio_nombre']) ?> · <?= e($s['sector']) ?> · <?= e($s['escala']) ?></span>
       </span>
       <span class="lista-paleta__meta"><?= e(formatear_fecha_relativa((string) $s['fecha_registro'])) ?></span>
@@ -110,7 +99,7 @@ if ($es_admin) {
 <section class="kpis-grid">
   <a href="index.php" class="tarjeta-kpi">
     <span class="tarjeta-kpi__titulo">Solicitudes</span>
-    <span class="tarjeta-kpi__subtexto">Buscar, editar y cambiar estados</span>
+    <span class="tarjeta-kpi__subtexto">Buscar, revisar y cambiar estados</span>
   </a>
   <a href="reportes.php" class="tarjeta-kpi">
     <span class="tarjeta-kpi__titulo">Reportes</span>
@@ -118,7 +107,7 @@ if ($es_admin) {
   </a>
   <a href="usuarios.php" class="tarjeta-kpi">
     <span class="tarjeta-kpi__titulo">Usuarios</span>
-    <span class="tarjeta-kpi__subtexto">Cuentas y roles</span>
+    <span class="tarjeta-kpi__subtexto">Cuentas y administradores</span>
   </a>
 </section>
     <?php
@@ -148,7 +137,7 @@ if ($folio_ver !== '') {
 // Una tarjeta con línea de tiempo; $detallada añade descripción y ubicación.
 $tarjeta = static function (array $s, bool $detallada) use ($etapas, $clase_estado): void {
     $indice = array_search($s['estado'], $etapas, true);
-    $cancelable = es_cancelable_por_cliente((string) $s['estado']);
+    $editable = $s['estado'] === 'Enviada';
     ?>
     <article class="tarjeta-solicitud">
       <header class="tarjeta-solicitud__cabecera">
@@ -182,14 +171,15 @@ $tarjeta = static function (array $s, bool $detallada) use ($etapas, $clase_esta
         <p><strong>Ubicación:</strong> <?= e($s['ubicacion']) ?></p>
       <?php endif; ?>
 
-      <?php if ($cancelable): ?>
+      <?php if ($editable): ?>
         <footer class="tarjeta-solicitud__pie">
-          <span class="tarjeta-solicitud__aviso">Puede cancelarla mientras esté Enviada o En revisión.</span>
-          <form method="post" action="panel.php" data-confirmar="¿Desea cancelar esta solicitud?">
+          <span class="tarjeta-solicitud__aviso">Puede modificarla o eliminarla mientras esté Enviada.</span>
+          <a href="crear.php?folio=<?= e(rawurlencode((string) $s['folio'])) ?>" class="btn btn--enlace">Editar</a>
+          <form method="post" action="panel.php" data-confirmar="¿Desea eliminar esta solicitud? No se puede deshacer.">
             <?= csrf_campo() ?>
-            <input type="hidden" name="accion" value="cancelar">
+            <input type="hidden" name="accion" value="eliminar">
             <input type="hidden" name="id_solicitud" value="<?= e($s['id_solicitud']) ?>">
-            <button type="submit" class="btn btn--enlace">Cancelar solicitud</button>
+            <button type="submit" class="btn btn--enlace">Eliminar</button>
           </form>
         </footer>
       <?php endif; ?>
