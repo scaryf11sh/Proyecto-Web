@@ -23,6 +23,11 @@ if ($es_post) {
     $folio = is_string($_GET['folio'] ?? null) ? trim($_GET['folio']) : '';
     $solicitud = $buscar($folio, (int) ($_GET['id'] ?? 0));
     $solo_lectura = ($_GET['modo'] ?? '') === 'ver';
+    if ($solo_lectura && $solicitud !== null && $solicitud['estado'] === 'Enviada'
+        && marcar_en_revision((int) $solicitud['id_solicitud'])) {
+        $solicitud['estado'] = 'En revisión';
+        flash_establecer('exito', 'La solicitud pasó a En revisión.');
+    }
 }
 
 if ($solicitud === null) {
@@ -137,12 +142,15 @@ require __DIR__ . '/includes/nav.php';
         <?php elseif ($permitidos === []): ?>
           <p class="campo__ayuda">Esta solicitud ya no admite cambios de estado.</p>
         <?php endif; ?>
+        <?php if ($estado_actual === 'Presupuesto'): ?>
+          <p class="campo__ayuda">Esperando que el cliente acepte el presupuesto.</p>
+        <?php endif; ?>
 
         <div class="campo <?= isset($errores['fecha_visita']) ? 'campo--error' : '' ?>">
           <label class="campo__etiqueta" for="fecha_visita">Fecha de visita*</label>
           <input class="campo__control" type="datetime-local" id="fecha_visita" name="fecha_visita"
                  value="<?= e($datos['fecha_visita']) ?>"<?= $dis ?>>
-          <span class="campo__ayuda">Requerida para Visita agendada</span>
+          <span class="campo__ayuda">Requerida para Visita agendada. Al guardar una fecha de visita, la solicitud pasa a Visita agendada.</span>
           <?php if (isset($errores['fecha_visita'])): ?>
             <span class="campo__error">! <?= e($errores['fecha_visita']) ?></span>
           <?php endif; ?>

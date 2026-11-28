@@ -198,10 +198,10 @@ function etapas_seguimiento(): array
 function estados_permitidos(string $actual): array
 {
     $transiciones = [
-        'Enviada' => ['En revisión', 'Cancelada'],
+        'Enviada' => ['Visita agendada', 'Cancelada'],
         'En revisión' => ['Visita agendada', 'Rechazada', 'Cancelada'],
         'Visita agendada' => ['Presupuesto', 'Rechazada', 'Cancelada'],
-        'Presupuesto' => ['Aceptada', 'Rechazada', 'Cancelada'],
+        'Presupuesto' => ['Rechazada', 'Cancelada'],
         'Aceptada' => ['En progreso', 'Cancelada'],
         'En progreso' => ['Finalizada', 'Cancelada'],
         'Rechazada' => ['En revisión'],
@@ -490,6 +490,13 @@ function eliminar_solicitud_cliente(int $id_solicitud, int $id_usuario): bool
     return $stmt->rowCount() > 0;
 }
 
+function aceptar_presupuesto_cliente(int $id_solicitud, int $id_usuario): bool
+{
+    $stmt = db()->prepare("UPDATE solicitud SET estado = 'Aceptada' WHERE id_solicitud = :id AND id_usuario = :id_usuario AND estado = 'Presupuesto'");
+    $stmt->execute([':id' => $id_solicitud, ':id_usuario' => $id_usuario]);
+    return $stmt->rowCount() === 1;
+}
+
 function actualizar_solicitud(int $id_solicitud, array $datos): array
 {
     $actual = obtener_solicitud_por_id($id_solicitud);
@@ -498,6 +505,12 @@ function actualizar_solicitud(int $id_solicitud, array $datos): array
     }
 
     $datos['estado'] = (string) ($datos['estado'] ?? $actual['estado']);
+    // Una fecha de visita guardada sobre Enviada/En revisión agenda la visita directamente.
+    if (in_array($datos['estado'], ['Enviada', 'En revisión'], true)
+        && in_array($actual['estado'], ['Enviada', 'En revisión'], true)
+        && normalizar_fecha_entrada((string) ($datos['fecha_visita'] ?? ''), true) !== null) {
+        $datos['estado'] = 'Visita agendada';
+    }
     $errores = validar_solicitud($datos, 'editar_admin', $actual['estado']);
     if ($errores !== []) {
         return ['ok' => false, 'errores' => $errores];
@@ -667,6 +680,24 @@ function listar_atender_primero(int $limite = 5): array
          ORDER BY s.prioridad DESC, s.fecha_registro ASC, s.id_solicitud ASC LIMIT :limite"
     );
     $stmt->bindValue(':limite', $limite, PDO::PARAM_INT);
+    $stmt->execute();
+    return array_map('normalizar_fila_solicitud', $stmt->fetchAll());
+}
+
+function marcar_en_revision(int $id_solicitud): bool
+{
+    $stmt = db()->prepare("UPDATE solicitud SET estado = 'En revisión' WHERE id_solicitud = :id AND estado = 'Enviada'");
+    $stmt->execute([':id' => $id_solicitud]);
+    return $stmt->rowCount() === 1;
+}
+
+function listar_en_revision(int $limite = 5): array
+{
+    $stmt = db()->prepare(
+        sql_base_solicitud() . " WHERE s.estado = 'En revisión'
+         ORDER BY s.fecha_actualizacion ASC, s.id_solicitud ASC LIMIT :limite"
+    );
+    $stmt->bindValue(':limite', max(1, $limite), PDO::PARAM_INT);
     $stmt->execute();
     return array_map('normalizar_fila_solicitud', $stmt->fetchAll());
 }

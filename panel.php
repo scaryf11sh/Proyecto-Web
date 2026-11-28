@@ -11,8 +11,15 @@ $es_admin = es_admin();
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exigir_csrf();
 
-    if ($es_admin || ($_POST['accion'] ?? '') !== 'eliminar') {
+    $accion = $_POST['accion'] ?? '';
+    if ($es_admin || !in_array($accion, ['eliminar', 'aceptar'], true)) {
         flash_establecer('error', 'Acción no permitida.');
+    } elseif ($accion === 'aceptar') {
+        if (aceptar_presupuesto_cliente((int) ($_POST['id_solicitud'] ?? 0), (int) $usuario['id_usuario'])) {
+            flash_establecer('exito', 'Presupuesto aceptado.');
+        } else {
+            flash_establecer('error', 'No se pudo aceptar: la solicitud no existe o no está en Presupuesto.');
+        }
     } elseif (eliminar_solicitud_cliente((int) ($_POST['id_solicitud'] ?? 0), (int) $usuario['id_usuario'])) {
         flash_establecer('exito', 'Solicitud eliminada.');
     } else {
@@ -30,6 +37,7 @@ $body_class = 'pagina-app';
 if ($es_admin) {
     $resumen = obtener_resumen_panel_admin();
     $atender = listar_atender_primero();
+    $en_revision = listar_en_revision();
 
     $titulo = 'Panel';
     require __DIR__ . '/includes/header.php';
@@ -91,6 +99,32 @@ if ($es_admin) {
       </span>
       <span class="lista-paleta__meta"><?= e(formatear_fecha_relativa((string) $s['fecha_registro'])) ?></span>
       <a href="editar.php?folio=<?= e(rawurlencode((string) $s['folio'])) ?>" class="btn btn--secundario btn--pequeno">Revisar</a>
+    </li>
+  <?php endforeach; ?>
+</ul>
+    <?php endif; ?>
+
+<div class="encabezado-pagina">
+  <div>
+    <h2 class="encabezado-pagina__titulo">En revisión (<?= e($resumen['en_revision']) ?>)</h2>
+    <p class="encabezado-pagina__subtitulo">Las más antiguas primero</p>
+  </div>
+</div>
+
+    <?php if ($en_revision === []): ?>
+<div class="estado-vacio">
+  <p class="estado-vacio__texto">No hay solicitudes en revisión.</p>
+</div>
+    <?php else: ?>
+<ul class="lista-paleta lista-paleta--panel">
+  <?php foreach ($en_revision as $s): ?>
+    <li class="lista-paleta__fila">
+      <span class="lista-paleta__principal">
+        <span class="lista-paleta__titulo"><span class="texto-mono texto-negrita"><?= e($s['folio']) ?></span> · <?= e($s['usuario_nombre']) ?></span>
+        <span class="lista-paleta__sub"><?= e($s['servicio_nombre']) ?></span>
+      </span>
+      <span class="lista-paleta__meta">Actualizada <?= e(formatear_fecha_relativa((string) $s['fecha_actualizacion'])) ?></span>
+      <a href="editar.php?folio=<?= e(rawurlencode((string) $s['folio'])) ?>&amp;modo=ver" class="btn btn--secundario btn--pequeno">Ver</a>
     </li>
   <?php endforeach; ?>
 </ul>
@@ -180,6 +214,18 @@ $tarjeta = static function (array $s, bool $detallada) use ($etapas, $clase_esta
             <input type="hidden" name="accion" value="eliminar">
             <input type="hidden" name="id_solicitud" value="<?= e($s['id_solicitud']) ?>">
             <button type="submit" class="btn btn--enlace">Eliminar</button>
+          </form>
+        </footer>
+      <?php endif; ?>
+
+      <?php if ($s['estado'] === 'Presupuesto'): ?>
+        <footer class="tarjeta-solicitud__pie">
+          <span class="tarjeta-solicitud__aviso">Su presupuesto está listo.</span>
+          <form method="post" action="panel.php" data-confirmar="¿Desea aceptar el presupuesto de esta solicitud?">
+            <?= csrf_campo() ?>
+            <input type="hidden" name="accion" value="aceptar">
+            <input type="hidden" name="id_solicitud" value="<?= e($s['id_solicitud']) ?>">
+            <button type="submit" class="btn btn--primario">Aceptar presupuesto</button>
           </form>
         </footer>
       <?php endif; ?>

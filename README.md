@@ -132,7 +132,7 @@ La base `oem_solicitudes` contiene tres tablas en InnoDB con `utf8mb4_unicode_ci
 
 **Folio.** Se genera al guardar la solicitud con el prefijo `OEM-`, el año a dos dígitos y un consecutivo de cuatro dígitos (`OEM-26-0051`). La columna es única y el consecutivo se calcula dentro de una transacción.
 
-**Flujo de estados.** La secuencia principal es `Enviada` → `En revisión` → `Visita agendada` → `Presupuesto` → `Aceptada` → `En progreso` → `Finalizada`. Desde `En revisión`, `Visita agendada` y `Presupuesto` se puede pasar a `Rechazada`, y una solicitud rechazada puede volver a `En revisión`. El estado `Cancelada` es posible desde `Enviada` hasta `En progreso`. `Finalizada` y `Cancelada` son estados finales. El servidor rechaza cualquier transición fuera de esta tabla y `Visita agendada` exige `fecha_visita`.
+**Flujo de estados.** `Enviada` pasa a `En revisión` cuando el administrador abre la solicitud con «Ver». Al guardar una fecha de visita desde `Enviada` o `En revisión`, la solicitud pasa directamente a `Visita agendada`. La secuencia principal es `Enviada` → `En revisión` → `Visita agendada` → `Presupuesto` → `Aceptada` → `En progreso` → `Finalizada`. Desde `En revisión`, `Visita agendada` y `Presupuesto` se puede pasar a `Rechazada`, y una solicitud rechazada puede volver a `En revisión`. El estado `Cancelada` es posible desde `Enviada` hasta `En progreso`. El paso de `Presupuesto` a `Aceptada` lo realiza el cliente desde su panel con el botón «Aceptar presupuesto»; el administrador no puede aceptarlo por él y solo ve que está esperando respuesta. `Finalizada` y `Cancelada` son estados finales. El servidor rechaza cualquier transición fuera de esta tabla y `Visita agendada` exige `fecha_visita`.
 
 ## Tecnologías
 
