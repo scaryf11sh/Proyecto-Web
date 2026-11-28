@@ -36,6 +36,7 @@ $total_paginas = $lista['total_paginas'];
 
 // Los filtros viajan en la querystring de cada enlace de paginación.
 $filtros_activos = array_filter($filtros, static fn(string $v): bool => $v !== '');
+$num_filtros = count(array_diff_key($filtros_activos, ['q' => 1]));
 $url_pagina = static fn(int $p): string => 'index.php?' . http_build_query($filtros_activos + ['pagina' => $p]);
 
 $paginas_visibles = array_unique(array_filter(
@@ -67,6 +68,8 @@ require __DIR__ . '/includes/nav.php';
            placeholder="Buscar por folio, cliente o teléfono" value="<?= e($filtros['q']) ?>">
     <kbd class="kbd barra-filtros__atajo" aria-hidden="true">/</kbd>
   </div>
+  <details class="barra-filtros__panel" open>
+    <summary class="btn btn--secundario btn--pequeno barra-filtros__resumen">Filtros<?= $num_filtros > 0 ? ' (' . $num_filtros . ')' : '' ?></summary>
   <div class="barra-filtros__fila">
     <div class="campo campo--inline">
       <label class="campo__etiqueta" for="f-estado">Estado</label>
@@ -99,6 +102,7 @@ require __DIR__ . '/includes/nav.php';
       <a href="index.php" class="btn btn--enlace">Limpiar filtros</a>
     </div>
   </div>
+  </details>
 </form>
 
 <div class="barra-conteo">

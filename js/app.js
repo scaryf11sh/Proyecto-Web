@@ -341,7 +341,17 @@
     });
   }
 
+  function inicializarPanelFiltros() {
+    var panel = document.querySelector('.barra-filtros__panel');
+    if (!panel || !window.matchMedia) return;
+    var escritorio = window.matchMedia('(min-width: 60rem)');
+    var ajustar = function () { panel.open = escritorio.matches; };
+    ajustar();
+    escritorio.addEventListener('change', ajustar);
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
+    inicializarPanelFiltros();
     inicializarMenuNavegacion();
     inicializarAtajoBusqueda();
     inicializarMascaraTelefono();
