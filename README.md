@@ -29,7 +29,7 @@ La aplicación se ejecuta sobre PHP 8 con MySQL, sin frameworks de backend ni de
 El sistema distingue dos roles:
 
 - **Cliente.** Se registra, crea, consulta, edita y elimina sus propias solicitudes (la edición y eliminación solo se permiten mientras sigan en `Enviada`).
-- **Administrador.** Atiende el panel de trabajo, gestiona todas las solicitudes, mantiene el catálogo de servicios, consulta reportes y crea cuentas de administrador.
+- **Administrador.** Atiende el panel de trabajo, gestiona todas las solicitudes, mantiene el catálogo de servicios y crea cuentas de administrador.
 
 ## Funciones implementadas
 
@@ -54,18 +54,12 @@ El sistema distingue dos roles:
 - Orden por prioridad descendente y, dentro de cada prioridad, por antigüedad.
 - Paginación de 10 registros.
 
-**D1. Reportes**
-
-- Indicadores de solicitudes por mes, por estado y visitas agendadas.
-- Filtro por periodo, atajos para este mes, últimos tres meses y este año, y filtro por sector.
-- Gráficas dibujadas con Canvas y SVG propios, sin CDN.
-
-**E1–E2. Panel y usuarios**
+**D1–D2. Panel y usuarios**
 
 - Panel del administrador con las tarjetas Nuevas, En revisión, Visitas próximas (7 días) y Recibidas en el mes, más la tabla «Atender primero».
 - Listado de usuarios con búsqueda y alta de cuentas de administrador.
 
-**F1–F2. Reglas del negocio**
+**E1–E2. Reglas del negocio**
 
 - Prioridad calculada automáticamente a partir del sector y la escala; no se captura a mano.
 - Panel del cliente con línea de seguimiento de siete etapas; edición y eliminación de solicitudes limitadas al estado `Enviada`.
@@ -161,7 +155,6 @@ La base `oem_solicitudes` contiene tres tablas en InnoDB con `utf8mb4_unicode_ci
 ├── registro.php
 ├── logout.php
 ├── panel.php
-├── reportes.php
 ├── usuarios.php
 ├── servicios/
 │   ├── index.php
@@ -180,8 +173,7 @@ La base `oem_solicitudes` contiene tres tablas en InnoDB con `utf8mb4_unicode_ci
 ├── img/
 │   └── panel-admin.png
 ├── js/
-│   ├── app.js
-│   └── reportes.js
+│   └── app.js
 ├── sql/
 │   └── oem_solicitudes.sql
 └── docs/
@@ -226,8 +218,7 @@ Las contraseñas se guardan en la base como hash bcrypt. Estos datos provienen d
 3. Abrir una solicitud para revisar sus detalles, agendar la visita, anotar notas internas y cambiar el estado entre las opciones permitidas.
 4. Eliminar una solicitud desde la pantalla de confirmación, o bien cambiarla a `Rechazada` o `Cancelada` cuando la transición sea válida.
 5. Mantener el catálogo en **Servicios**: crear, editar, desactivar o eliminar servicios. Si el servicio tiene solicitudes, el sistema lo desactiva en lugar de borrarlo.
-6. Consultar **Reportes** con el periodo, los atajos de fecha y el filtro por sector.
-7. Crear cuentas de administrador en **Usuarios**, con nombre, correo, teléfono y contraseña.
+6. Crear cuentas de administrador en **Usuarios**, con nombre, correo, teléfono y contraseña.
 
 ## Seguridad
 
