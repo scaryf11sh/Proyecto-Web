@@ -12,8 +12,6 @@ $ruta_raiz = $ruta_raiz ?? (function_exists('prefijo_raiz') ? prefijo_raiz() : '
 <link rel="stylesheet" href="<?= e($ruta_raiz) ?>css/styles.css?v=<?= filemtime(__DIR__ . '/../css/styles.css') ?>">
 <script>
 document.documentElement.classList.add('js');
-/* Aplica el tema guardado antes del primer pintado para evitar el parpadeo. */
-try { var t = localStorage.getItem('oem-theme'); document.documentElement.dataset.theme = (t === 'dark') ? 'dark' : 'light'; } catch (e) {}
 </script>
 </head>
 <body class="<?= e($body_class ?? 'pagina-app') ?>">

@@ -11,7 +11,7 @@
     }
   }
 
-  // light-dark() no se puede pasar al canvas ni a atributos SVG: se resuelve con un elemento de prueba.
+  // var() no se puede pasar al canvas ni a atributos SVG: se resuelve con un elemento de prueba.
   var sonda = null;
   function tema(nombre, respaldo) {
     if (!sonda) {
@@ -124,10 +124,10 @@
     var maxEje = Math.max(25, Math.ceil(maxDato / 5) * 5);
     var pasoEje = Math.max(5, Math.round(maxEje / 5));
 
-    var cTexto = tema('--texto', '#f2f2f3');
-    var cTexto2 = tema('--texto-2', '#9b9da4');
-    var cAcento = tema('--acento', '#f5b83d');
-    var cFondo = tema('--surface', '#121317');
+    var cTexto = tema('--texto', '#0c0d10');
+    var cTexto2 = tema('--texto-2', '#585b63');
+    var cAcento = tema('--acento', '#a15e00');
+    var cFondo = tema('--surface', '#ffffff');
 
     ctx.font = '500 12px ' + FUENTE;
     ctx.textBaseline = 'middle';
@@ -136,7 +136,7 @@
       var proporcion = valor / maxEje;
       var y = padArr + altoArea - proporcion * altoArea;
 
-      ctx.strokeStyle = valor === 0 ? tema('--linea-3', 'rgba(255, 255, 255, 0.28)') : tema('--linea', 'rgba(255, 255, 255, 0.08)');
+      ctx.strokeStyle = valor === 0 ? tema('--linea-3', 'rgba(12, 13, 16, 0.32)') : tema('--linea', 'rgba(12, 13, 16, 0.09)');
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(padIzq, y);
@@ -262,7 +262,7 @@
       var textoSector = document.createElementNS(ns, 'text');
       textoSector.setAttribute('x', '0');
       textoSector.setAttribute('y', String(y + 13));
-      textoSector.setAttribute('fill', tema('--texto', '#f2f2f3'));
+      textoSector.setAttribute('fill', tema('--texto', '#0c0d10'));
       textoSector.setAttribute('font-size', '12');
       textoSector.setAttribute('font-weight', '600');
       textoSector.textContent = f.sector;
@@ -274,14 +274,14 @@
       rect.setAttribute('width', String(anchoBarra));
       rect.setAttribute('height', '14');
       rect.setAttribute('rx', '3');
-      rect.setAttribute('fill', i === 0 ? tema('--texto', '#f2f2f3') : (i === 1 ? tema('--info', '#8aabff') : tema('--aviso', '#e9a23b')));
+      rect.setAttribute('fill', i === 0 ? tema('--texto', '#0c0d10') : (i === 1 ? tema('--info', '#1e40af') : tema('--aviso', '#86470a')));
       svg.appendChild(rect);
 
       var textoValor = document.createElementNS(ns, 'text');
       textoValor.setAttribute('x', '316');
       textoValor.setAttribute('y', String(y + 13));
       textoValor.setAttribute('text-anchor', 'end');
-      textoValor.setAttribute('fill', tema('--texto-2', '#9b9da4'));
+      textoValor.setAttribute('fill', tema('--texto-2', '#585b63'));
       textoValor.setAttribute('font-size', '12');
       textoValor.setAttribute('font-weight', '600');
       textoValor.textContent = f.dias_promedio.toFixed(1) + ' d';
@@ -307,12 +307,6 @@
     }
 
     renderizarTodo();
-
-    document.addEventListener('oem-tema', function () {
-      var viejo = document.querySelector('#grafica-i4 svg[data-grafica="i4"]');
-      if (viejo) viejo.remove();
-      renderizarTodo();
-    });
 
     var rafId = null;
     window.addEventListener('resize', function () {
