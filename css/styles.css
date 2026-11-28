@@ -1731,47 +1731,6 @@ a.tarjeta-kpi:hover::after { border-color: var(--texto); transform: translateX(2
 .tarjeta-reporte .tabla-datos th { background: transparent; }
 .tarjeta-reporte .tabla-datos tbody tr:hover { background: transparent; }
 
-.barra-horizontal {
-  display: block;
-  min-width: 2px;
-  max-width: 100%;
-  height: 0.625rem;
-  background: var(--texto);
-  border-radius: 3px;
-}
-
-.barra-horizontal--secundaria,
-#grafica-i2 p:nth-child(2) .barra-horizontal { background: var(--info); }
-.barra-horizontal--terciaria,
-#grafica-i2 p:nth-child(3) .barra-horizontal { background: var(--aviso); }
-.barra-horizontal--cuaternaria,
-#grafica-i2 p:nth-child(4) .barra-horizontal { background: var(--exito); }
-
-#grafica-i2 p {
-  display: grid;
-  grid-template-columns: 6.75rem minmax(0, 1fr) 4.5rem;
-  align-items: center;
-  gap: 0.5rem;
-  margin: 0;
-  padding: 0.625rem 0;
-  border-bottom: 1px solid var(--linea);
-  color: var(--texto-2);
-  font-size: 0.9375rem;
-  font-variant-numeric: tabular-nums;
-}
-
-#grafica-i2 p strong { color: var(--texto); font-weight: 500; }
-
-@media (min-width: 30rem) {
-  #grafica-i2 p {
-    grid-template-columns: 8.25rem minmax(0, 1fr) 5.25rem;
-    gap: 0.75rem;
-  }
-}
-
-#grafica-i2 p:last-child { border-bottom: 0; }
-#grafica-i2 p > span:last-child { text-align: right; white-space: nowrap; }
-
 .barra-estado-mini {
   display: inline-block;
   vertical-align: middle;

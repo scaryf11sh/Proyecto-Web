@@ -52,10 +52,6 @@ $json_reportes = json_encode(
             static fn(array $fila): array => ['etiqueta' => $fila['etiqueta'], 'cantidad' => (int)$fila['cantidad']],
             $reportes['i1_por_mes']
         ),
-        'i2_por_canal' => array_map(
-            static fn(array $fila): array => ['canal' => $fila['canal'], 'cantidad' => (int)$fila['cantidad'], 'porcentaje' => (int)$fila['porcentaje']],
-            $reportes['i2_por_canal']
-        ),
         'i3_por_estado' => array_map(
             static fn(array $fila): array => ['estado' => $fila['estado'], 'cantidad' => (int)$fila['cantidad'], 'porcentaje' => (float)$fila['porcentaje']],
             $reportes['i3_por_estado']
@@ -119,11 +115,6 @@ require __DIR__ . '/includes/nav.php';
     <span class="tarjeta-kpi__subtexto"><?= e(formatear_fecha_corta($desde)) ?> – <?= e(formatear_fecha($hasta)) ?></span>
   </article>
   <article class="tarjeta-kpi">
-    <span class="tarjeta-kpi__titulo">Por la web</span>
-    <strong class="tarjeta-kpi__valor"><?= e((int)$kpis['web_porcentaje']) ?> %</strong>
-    <span class="tarjeta-kpi__subtexto"><?= e((int)$kpis['web_cantidad']) ?> de <?= e($total) ?></span>
-  </article>
-  <article class="tarjeta-kpi">
     <span class="tarjeta-kpi__titulo">Hasta la visita</span>
     <strong class="tarjeta-kpi__valor"><?= e($dias_promedio) ?> días</strong>
     <span class="tarjeta-kpi__subtexto">Promedio</span>
@@ -169,41 +160,6 @@ require __DIR__ . '/includes/nav.php';
       </table>
     </div>
     <p class="tarjeta-reporte__nota">Cálculo: solicitudes registradas en cada mes, según la fecha de registro.</p>
-  </article>
-
-  <article class="tarjeta-reporte">
-    <h2 class="tarjeta-reporte__titulo">I-2 · Solicitudes por canal</h2>
-    <div class="tarjeta-reporte__lienzo" id="grafica-i2">
-      <?php foreach ($reportes['i2_por_canal'] as $fila): ?>
-      <p>
-        <strong><?= e($fila['canal']) ?></strong>
-        <span class="barra-horizontal" style="width: <?= e((int)$fila['porcentaje']) ?>%"></span>
-        <span><?= e((int)$fila['cantidad']) ?> · <?= e((int)$fila['porcentaje']) ?> %</span>
-      </p>
-      <?php endforeach; ?>
-    </div>
-    <div class="tabla-contenedor">
-      <table class="tabla-datos">
-        <caption>I-2 · Solicitudes por canal</caption>
-        <thead>
-          <tr>
-            <th>Canal</th>
-            <th>Solicitudes</th>
-            <th>%</th>
-          </tr>
-        </thead>
-        <tbody>
-          <?php foreach ($reportes['i2_por_canal'] as $fila): ?>
-          <tr>
-            <td><?= e($fila['canal']) ?></td>
-            <td><?= e((int)$fila['cantidad']) ?></td>
-            <td><?= e((int)$fila['porcentaje']) ?> %</td>
-          </tr>
-          <?php endforeach; ?>
-        </tbody>
-      </table>
-    </div>
-    <p class="tarjeta-reporte__nota">Cálculo: solicitudes de cada canal ÷ total del periodo (<?= e($total) ?>).</p>
   </article>
 
   <article class="tarjeta-reporte">

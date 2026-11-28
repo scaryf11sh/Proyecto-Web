@@ -198,30 +198,6 @@
     });
   }
 
-  function actualizarGraficaI2(contenedor, filas) {
-    if (!contenedor) return;
-
-    var modificadores = [
-      '',
-      'barra-horizontal--secundaria',
-      'barra-horizontal--terciaria',
-      'barra-horizontal--cuaternaria'
-    ];
-    var barras = contenedor.querySelectorAll('.barra-horizontal');
-    var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    barras.forEach(function (barra, idx) {
-      var mod = idx < modificadores.length ? modificadores[idx] : 'barra-horizontal--cuaternaria';
-      if (mod) barra.classList.add(mod);
-      if (!reduceMotion) {
-        barra.style.transition = 'width 180ms ease-out';
-      }
-      if (Array.isArray(filas) && filas[idx] && typeof filas[idx].porcentaje !== 'undefined') {
-        barra.style.width = Math.max(0, Math.min(100, Number(filas[idx].porcentaje) || 0)) + '%';
-      }
-    });
-  }
-
   function enriquecerTablaI3(filas) {
     var contenedorI3 = document.getElementById('grafica-i3');
     if (!contenedorI3) return;
@@ -321,14 +297,10 @@
     if (!datos) return;
 
     var canvasI1 = document.getElementById('grafica-i1');
-    var contenedorI2 = document.getElementById('grafica-i2');
 
     function renderizarTodo() {
       if (canvasI1) {
         dibujarGraficaI1(canvasI1, datos.i1_por_mes || []);
-      }
-      if (contenedorI2) {
-        actualizarGraficaI2(contenedorI2, datos.i2_por_canal || []);
       }
       enriquecerTablaI3(datos.i3_por_estado || []);
       enriquecerGraficaI4(datos);
