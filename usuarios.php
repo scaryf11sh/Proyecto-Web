@@ -4,25 +4,30 @@ declare(strict_types=1);
 require_once __DIR__ . '/includes/funciones.php';
 
 iniciar_sesion();
-$admin = requerir_admin();
+requerir_admin();
+
+$errores = [];
+$datos = ['nombre' => '', 'correo' => '', 'telefono' => ''];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exigir_csrf();
-    $id_usuario = (int)($_POST['id_usuario'] ?? 0);
-    $nuevo_rol = is_string($_POST['nuevo_rol'] ?? null) ? $_POST['nuevo_rol'] : '';
-    if ($nuevo_rol !== 'Cliente' && $nuevo_rol !== 'Administrador') {
-        flash_establecer('error', 'El rol indicado no es válido.');
-    } else {
-        // cambiar_rol_usuario() impide que el administrador en sesión se quite su propio rol.
-        $resultado = cambiar_rol_usuario($id_usuario, $nuevo_rol, (int)$admin['id_usuario']);
-        if ($resultado['ok']) {
-            flash_establecer('exito', 'Rol actualizado a ' . $nuevo_rol . '.');
-        } else {
-            flash_establecer('error', $resultado['error'] ?? 'No fue posible cambiar el rol.');
-        }
+
+    foreach (array_keys($datos) as $campo) {
+        $datos[$campo] = is_string($_POST[$campo] ?? null) ? trim($_POST[$campo]) : '';
     }
-    header('Location: usuarios.php');
-    exit;
+    // Las contraseñas no se recortan ni se devuelven al formulario.
+    $datos['contrasena'] = is_string($_POST['contrasena'] ?? null) ? $_POST['contrasena'] : '';
+    $datos['confirmar_contrasena'] = is_string($_POST['confirmar_contrasena'] ?? null) ? $_POST['confirmar_contrasena'] : '';
+    // El aviso de privacidad lo acepta quien se registra; un administrador creado aquí no pasa por ese paso.
+    $datos['aviso_privacidad'] = '1';
+
+    $resultado = crear_usuario($datos, 'Administrador');
+    if ($resultado['ok']) {
+        flash_establecer('exito', 'Administrador ' . $datos['nombre'] . ' creado.');
+        header('Location: usuarios.php');
+        exit;
+    }
+    $errores = $resultado['errores'];
 }
 
 $q = is_string($_GET['q'] ?? null) ? trim($_GET['q']) : '';
@@ -40,14 +45,72 @@ require __DIR__ . '/includes/nav.php';
 <div class="encabezado-pagina">
   <div>
     <h1 class="encabezado-pagina__titulo">Usuarios</h1>
-    <p class="encabezado-pagina__subtitulo">Cambio de rol entre Cliente y Administrador.</p>
+    <p class="encabezado-pagina__subtitulo">Cuentas registradas y alta de administradores.</p>
   </div>
 </div>
+
+<form method="post" action="usuarios.php" data-validar="registro" novalidate>
+  <?= csrf_campo() ?>
+  <h2>Nuevo administrador</h2>
+
+  <div class="campos-grid campos-grid--2">
+    <div class="campo <?= isset($errores['nombre']) ? 'campo--error' : '' ?>">
+      <label class="campo__etiqueta" for="nombre">Nombre completo*</label>
+      <input class="campo__control" type="text" id="nombre" name="nombre" maxlength="100"
+             autocomplete="off" value="<?= e($datos['nombre']) ?>" data-requerido="true">
+      <?php if (isset($errores['nombre'])): ?>
+        <span class="campo__error">! <?= e($errores['nombre']) ?></span>
+      <?php endif; ?>
+    </div>
+
+    <div class="campo <?= isset($errores['correo']) ? 'campo--error' : '' ?>">
+      <label class="campo__etiqueta" for="correo">Correo*</label>
+      <input class="campo__control" type="email" id="correo" name="correo" maxlength="120"
+             autocomplete="off" value="<?= e($datos['correo']) ?>" data-requerido="true" data-tipo="correo">
+      <?php if (isset($errores['correo'])): ?>
+        <span class="campo__error">! <?= e($errores['correo']) ?></span>
+      <?php endif; ?>
+    </div>
+
+    <div class="campo <?= isset($errores['telefono']) ? 'campo--error' : '' ?>">
+      <label class="campo__etiqueta" for="telefono">Teléfono*</label>
+      <input class="campo__control" type="tel" id="telefono" name="telefono" autocomplete="off"
+             placeholder="(664) 000 0000" value="<?= e($datos['telefono']) ?>" data-requerido="true" data-tipo="telefono">
+      <span class="campo__ayuda">10 dígitos</span>
+      <?php if (isset($errores['telefono'])): ?>
+        <span class="campo__error">! <?= e($errores['telefono']) ?></span>
+      <?php endif; ?>
+    </div>
+  </div>
+
+  <div class="campos-grid campos-grid--2">
+    <div class="campo <?= isset($errores['contrasena']) ? 'campo--error' : '' ?>">
+      <label class="campo__etiqueta" for="contrasena">Contraseña*</label>
+      <input class="campo__control" type="password" id="contrasena" name="contrasena"
+             autocomplete="new-password" data-requerido="true" data-min-len="8">
+      <span class="campo__ayuda">Mínimo 8 caracteres</span>
+      <?php if (isset($errores['contrasena'])): ?>
+        <span class="campo__error">! <?= e($errores['contrasena']) ?></span>
+      <?php endif; ?>
+    </div>
+
+    <div class="campo <?= isset($errores['confirmar_contrasena']) ? 'campo--error' : '' ?>">
+      <label class="campo__etiqueta" for="confirmar_contrasena">Confirmar contraseña*</label>
+      <input class="campo__control" type="password" id="confirmar_contrasena" name="confirmar_contrasena"
+             autocomplete="new-password" data-requerido="true" data-coincide="#contrasena">
+      <?php if (isset($errores['confirmar_contrasena'])): ?>
+        <span class="campo__error">! <?= e($errores['confirmar_contrasena']) ?></span>
+      <?php endif; ?>
+    </div>
+  </div>
+
+  <button type="submit" class="btn btn--primario">Crear administrador</button>
+</form>
 
 <form class="barra-filtros" method="get" action="usuarios.php">
   <div class="barra-filtros__busqueda">
     <label class="sr-only" for="buscar-usuarios">Buscar usuarios</label>
-    <input class="campo__control" type="search" id="buscar-usuarios" name="q" placeholder="Buscar por nombre, correo o empresa" value="<?= e($q) ?>" aria-keyshortcuts="/">
+    <input class="campo__control" type="search" id="buscar-usuarios" name="q" placeholder="Buscar por nombre o correo" value="<?= e($q) ?>" aria-keyshortcuts="/">
     <kbd class="kbd barra-filtros__atajo" aria-hidden="true">/</kbd>
   </div>
   <div class="barra-filtros__fila">
@@ -79,33 +142,19 @@ require __DIR__ . '/includes/nav.php';
         <th>Rol</th>
         <th>Solicitudes</th>
         <th>Registro</th>
-        <th>Acción</th>
       </tr>
     </thead>
     <tbody>
       <?php foreach ($usuarios as $usuario): ?>
-      <?php $rol_destino = $usuario['rol'] === 'Cliente' ? 'Administrador' : 'Cliente'; ?>
       <tr>
         <td data-label="Usuario">
-          <?= e($usuario['nombre']) ?><?php if (!empty($usuario['empresa'])): ?><span class="tabla-datos__sublinea"><?= e($usuario['empresa']) ?></span><?php endif; ?>
+          <?= e($usuario['nombre']) ?>
         </td>
         <td data-label="Correo"><?= e($usuario['correo']) ?></td>
         <td data-label="Teléfono"><?= e(formatear_telefono($usuario['telefono'])) ?></td>
         <td data-label="Rol"><?= e($usuario['rol']) ?></td>
         <td data-label="Solicitudes"><?= e((int)$usuario['total_solicitudes']) ?></td>
         <td data-label="Registro"><?= e(formatear_fecha($usuario['fecha_registro'])) ?></td>
-        <td class="tabla-datos__acciones">
-          <?php if ((int)$usuario['id_usuario'] === (int)$admin['id_usuario']): ?>
-          <span class="tabla-datos__sublinea">Sesión actual</span>
-          <?php else: ?>
-          <form method="post" action="usuarios.php" data-confirmar="¿Cambiar el rol de <?= e($usuario['nombre']) ?> a <?= e($rol_destino) ?>?">
-            <?= csrf_campo() ?>
-            <input type="hidden" name="id_usuario" value="<?= e((int)$usuario['id_usuario']) ?>">
-            <input type="hidden" name="nuevo_rol" value="<?= e($rol_destino) ?>">
-            <button type="submit" class="btn btn--secundario btn--pequeno"><?= e($usuario['rol'] === 'Cliente' ? 'Hacer administrador' : 'Hacer cliente') ?></button>
-          </form>
-          <?php endif; ?>
-        </td>
       </tr>
       <?php endforeach; ?>
     </tbody>
