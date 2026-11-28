@@ -1,4 +1,4 @@
-/* OEM Solicitudes. Sistema de diseño de Tablero adaptado: claro por defecto (grafito oscuro por interruptor), Onest, hairlines de 1 px, botón en tinta y un único acento ámbar para lo vivo. */
+/* OEM Solicitudes. Sistema de diseño de Tablero adaptado: claro, Onest, hairlines de 1 px, botón en tinta y un único acento ámbar para lo vivo. */
 
 /* ===== Tokens ===== */
 
@@ -14,43 +14,42 @@
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 
-/* Cada token es un par light-dark(claro, oscuro). El claro es el predeterminado; data-theme fuerza uno. */
 :root {
   color-scheme: light;
 
-  --bg: light-dark(#f6f6f7, #08090b);
-  --bg-2: light-dark(#eeeef0, #0d0e11);
-  --surface: light-dark(#ffffff, #121317);
-  --surface-2: light-dark(#f1f1f3, #1a1b20);
+  --bg: #f6f6f7;
+  --bg-2: #eeeef0;
+  --surface: #ffffff;
+  --surface-2: #f1f1f3;
 
-  --linea: light-dark(rgba(12, 13, 16, 0.09), rgba(255, 255, 255, 0.08));
-  --linea-2: light-dark(rgba(12, 13, 16, 0.17), rgba(255, 255, 255, 0.15));
-  --linea-3: light-dark(rgba(12, 13, 16, 0.32), rgba(255, 255, 255, 0.28));
-  --borde-control: light-dark(#7d8088, #71747c);
-  --hover: light-dark(rgba(12, 13, 16, 0.05), rgba(255, 255, 255, 0.06));
-  --hover-2: light-dark(rgba(12, 13, 16, 0.08), rgba(255, 255, 255, 0.09));
+  --linea: rgba(12, 13, 16, 0.09);
+  --linea-2: rgba(12, 13, 16, 0.17);
+  --linea-3: rgba(12, 13, 16, 0.32);
+  --borde-control: #7d8088;
+  --hover: rgba(12, 13, 16, 0.05);
+  --hover-2: rgba(12, 13, 16, 0.08);
 
-  --texto: light-dark(#0c0d10, #f2f2f3);
-  --texto-2: light-dark(#585b63, #9b9da4);
-  --texto-3: light-dark(#5f626a, #8f9199);
+  --texto: #0c0d10;
+  --texto-2: #585b63;
+  --texto-3: #5f626a;
 
-  --acento: light-dark(#a15e00, #f5b83d);
-  --acento-tinte: light-dark(rgba(161, 94, 0, 0.1), rgba(245, 184, 61, 0.1));
-  --sobre-acento: light-dark(#ffffff, #08090b);
-  --focus: light-dark(#0c0d10, #f5b83d);
+  --acento: #a15e00;
+  --acento-tinte: rgba(161, 94, 0, 0.1);
+  --sobre-acento: #ffffff;
+  --focus: #0c0d10;
 
-  --btn: light-dark(#0c0d10, #f2f2f3);
-  --btn-h: light-dark(#2b2d33, #ffffff);
-  --on-btn: light-dark(#ffffff, #08090b);
+  --btn: #0c0d10;
+  --btn-h: #2b2d33;
+  --on-btn: #ffffff;
 
-  --info: light-dark(#1e40af, #8aabff);
-  --exito: light-dark(#166534, #4fc38a);
-  --aviso: light-dark(#86470a, #e9a23b);
-  --peligro: light-dark(#9f1d1d, #f07272);
-  --sobre-peligro: light-dark(#ffffff, #08090b);
+  --info: #1e40af;
+  --exito: #166534;
+  --aviso: #86470a;
+  --peligro: #9f1d1d;
+  --sobre-peligro: #ffffff;
 
-  --sh: light-dark(rgba(12, 13, 16, 0.1), rgba(0, 0, 0, 0.55));
-  --hi: light-dark(rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.11));
+  --sh: rgba(12, 13, 16, 0.1);
+  --hi: rgba(255, 255, 255, 0);
   --sombra-tarjeta: inset 0 1px 0 var(--hi);
   --sombra-panel: inset 0 1px 0 var(--hi), 0 2px 4px var(--sh), 0 28px 64px -12px var(--sh);
   --sombra-popover: inset 0 1px 0 var(--hi), 0 2px 4px var(--sh), 0 18px 44px var(--sh);
@@ -67,9 +66,6 @@
   --r-panel: 18px;
   --rapido: 150ms;
 }
-
-:root[data-theme="light"] { color-scheme: light; }
-:root[data-theme="dark"] { color-scheme: dark; }
 
 @media (min-width: 56rem) {
   :root { --gutter: 2.5rem; }
@@ -199,18 +195,6 @@ form > .encabezado-pagina__acciones,
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M13.8 2.5 5 13.5h5.6L9.6 21.5 19 10h-5.8z'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 
-.barra-nav__tema {
-  display: grid; place-items: center; flex: none; width: 44px; height: 44px; padding: 0;
-  background: transparent; border: 0; border-radius: var(--r); color: var(--texto-2); cursor: pointer;
-  transition: background-color var(--rapido) ease, color var(--rapido) ease;
-}
-
-.barra-nav__tema:hover { background: var(--surface-2); color: var(--texto); }
-.barra-nav__tema svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
-.barra-nav__tema .luna { display: none; }
-:root[data-theme="dark"] .barra-nav__tema .sol { display: none; }
-:root[data-theme="dark"] .barra-nav__tema .luna { display: block; }
-
 .barra-nav__toggle { display: none; }
 
 .js .barra-nav__toggle {
@@ -272,7 +256,6 @@ form > .encabezado-pagina__acciones,
     order: 2; padding: 0;
   }
 
-  .barra-nav__tema { order: 3; margin-left: 6px; }
   .barra-nav__interior > .barra-nav__enlace { margin-left: auto; }
 
   .barra-nav__enlaces,
@@ -289,8 +272,6 @@ form > .encabezado-pagina__acciones,
 
 @media (max-width: 55.99rem) {
   .barra-nav__interior > .barra-nav__enlace { padding: 0 8px; font-size: 0.875rem; white-space: nowrap; order: 1; }
-  .barra-nav__tema { margin-left: auto; }
-  .barra-nav__marca { margin-right: 0; }
 }
 
 /* ===== Landing ===== */
