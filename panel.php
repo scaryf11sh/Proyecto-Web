@@ -135,10 +135,6 @@ if ($es_admin) {
     <span class="tarjeta-kpi__titulo">Solicitudes</span>
     <span class="tarjeta-kpi__subtexto">Buscar, revisar y cambiar estados</span>
   </a>
-  <a href="reportes.php" class="tarjeta-kpi">
-    <span class="tarjeta-kpi__titulo">Reportes</span>
-    <span class="tarjeta-kpi__subtexto">Indicadores del periodo</span>
-  </a>
   <a href="usuarios.php" class="tarjeta-kpi">
     <span class="tarjeta-kpi__titulo">Usuarios</span>
     <span class="tarjeta-kpi__subtexto">Cuentas y administradores</span>

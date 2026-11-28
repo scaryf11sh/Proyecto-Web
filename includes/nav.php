@@ -26,7 +26,6 @@ $enlace_nav = static function (string $href, string $texto, bool $activo) use ($
         <?php $enlace_nav('panel.php', 'Panel', $pagina_activa === 'panel'); ?>
         <?php $enlace_nav('index.php', 'Solicitudes', $pagina_activa === 'solicitudes'); ?>
         <?php $enlace_nav('servicios/index.php', 'Servicios', $pagina_activa === 'servicios'); ?>
-        <?php $enlace_nav('reportes.php', 'Reportes', $pagina_activa === 'reportes'); ?>
         <?php $enlace_nav('usuarios.php', 'Usuarios', $pagina_activa === 'usuarios'); ?>
       </nav>
       <div class="barra-nav__acciones">

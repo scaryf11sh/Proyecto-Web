@@ -7,7 +7,6 @@ require_once __DIR__ . '/auth.php';
 const SECTORES = ['Industrial', 'Comercial', 'Residencial'];
 const ESCALAS = ['Grande', 'Mediano', 'Pequeño'];
 const ESTADOS = ['Enviada', 'En revisión', 'Visita agendada', 'Presupuesto', 'Aceptada', 'En progreso', 'Finalizada', 'Rechazada', 'Cancelada'];
-const ESTADOS_CERRADOS = ['Finalizada', 'Rechazada', 'Cancelada'];
 const DIAS_SEMANA = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
 const MESES_ES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
 const FECHA_REFERENCIA_BASE = '2026-10-25';
@@ -700,95 +699,6 @@ function listar_en_revision(int $limite = 5): array
     $stmt->bindValue(':limite', max(1, $limite), PDO::PARAM_INT);
     $stmt->execute();
     return array_map('normalizar_fila_solicitud', $stmt->fetchAll());
-}
-
-function obtener_reportes(string $desde = '2026-07-01', string $hasta = '2026-10-25', string $sector = 'Todos'): array
-{
-    $desde = normalizar_fecha_entrada($desde) ?? '2026-07-01';
-    $hasta = normalizar_fecha_entrada($hasta) ?? '2026-10-25';
-    if ($desde > $hasta) {
-        [$desde, $hasta] = [$hasta, $desde];
-    }
-    $sector = in_array($sector, SECTORES, true) ? $sector : 'Todos';
-
-    $donde = 'fecha_registro >= :desde AND fecha_registro <= :hasta';
-    $params = [':desde' => $desde . ' 00:00:00', ':hasta' => $hasta . ' 23:59:59'];
-    if ($sector !== 'Todos') {
-        $donde .= ' AND sector = :sector';
-        $params[':sector'] = $sector;
-    }
-    $pdo = db();
-    $consultar = static function (string $sql, array $extra = []) use ($pdo, $params): array {
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute($params + $extra);
-        return $stmt->fetchAll();
-    };
-
-    $total = (int) $consultar("SELECT COUNT(*) AS n FROM solicitud WHERE {$donde}")[0]['n'];
-    $porcentaje = static fn(int $parte, int $todo): float => $todo > 0 ? $parte * 100 / $todo : 0.0;
-
-    $estados = array_fill_keys(ESTADOS, 0);
-    foreach ($consultar("SELECT estado, COUNT(*) AS n FROM solicitud WHERE {$donde} GROUP BY estado") as $f) {
-        $estados[$f['estado']] = (int) $f['n'];
-    }
-    $i3 = [];
-    foreach ($estados as $estado => $cantidad) {
-        $i3[] = ['estado' => $estado, 'cantidad' => $cantidad, 'porcentaje' => round($porcentaje($cantidad, $total), 1)];
-    }
-    $cerradas = array_sum(array_intersect_key($estados, array_flip(ESTADOS_CERRADOS)));
-
-    $por_mes = [];
-    foreach ($consultar("SELECT DATE_FORMAT(fecha_registro, '%Y-%m') AS anio_mes, COUNT(*) AS n FROM solicitud WHERE {$donde} GROUP BY anio_mes") as $f) {
-        $por_mes[$f['anio_mes']] = (int) $f['n'];
-    }
-    $i1 = [];
-    $cursor = (new DateTimeImmutable($desde))->modify('first day of this month');
-    $limite = new DateTimeImmutable($hasta);
-    while ($cursor <= $limite) {
-        $clave = $cursor->format('Y-m');
-        $i1[] = [
-            'anio_mes' => $clave,
-            'etiqueta' => mb_substr(MESES_ES[(int) $cursor->format('n') - 1], 0, 3),
-            'cantidad' => $por_mes[$clave] ?? 0,
-        ];
-        $cursor = $cursor->modify('+1 month');
-    }
-
-    $visita = $consultar(
-        "SELECT sector, COUNT(*) AS con_visita, ROUND(AVG(DATEDIFF(fecha_visita, fecha_registro)), 1) AS dias
-         FROM solicitud WHERE {$donde} AND fecha_visita IS NOT NULL GROUP BY sector"
-    );
-    $por_sector = [];
-    foreach ($visita as $f) {
-        $por_sector[$f['sector']] = ['con_visita' => (int) $f['con_visita'], 'dias_promedio' => (float) $f['dias']];
-    }
-    $i4 = [];
-    foreach (SECTORES as $s) {
-        $i4[] = ['sector' => $s, 'con_visita' => $por_sector[$s]['con_visita'] ?? 0, 'dias_promedio' => $por_sector[$s]['dias_promedio'] ?? 0.0];
-    }
-
-    $global = $consultar(
-        "SELECT COUNT(*) AS n, ROUND(AVG(DATEDIFF(fecha_visita, fecha_registro)), 1) AS dias
-         FROM solicitud WHERE {$donde} AND fecha_visita IS NOT NULL"
-    )[0];
-
-    return [
-        'periodo' => [
-            'desde' => $desde,
-            'hasta' => $hasta,
-            'etiqueta' => formatear_fecha($desde) . ' – ' . formatear_fecha($hasta),
-            'sector' => $sector,
-        ],
-        'kpis' => [
-            'total' => $total,
-            'promedio_dias_visita' => (float) ($global['dias'] ?? 0),
-            'total_con_visita' => (int) $global['n'],
-            'activas' => $total - $cerradas,
-        ],
-        'i1_por_mes' => $i1,
-        'i3_por_estado' => $i3,
-        'i4_tiempo_visita' => $i4,
-    ];
 }
 
 function normalizar_fila_servicio(array $fila): array

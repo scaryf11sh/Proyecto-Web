@@ -36,6 +36,5 @@ $ruta_raiz = $ruta_raiz ?? (function_exists('prefijo_raiz') ? prefijo_raiz() : '
 </footer>
 <?php endif; ?>
 <script src="<?= e($ruta_raiz) ?>js/app.js?v=<?= filemtime(__DIR__ . '/../js/app.js') ?>"></script>
-<script src="<?= e($ruta_raiz) ?>js/reportes.js?v=<?= filemtime(__DIR__ . '/../js/reportes.js') ?>"></script>
 </body>
 </html>
