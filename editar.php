@@ -6,9 +6,6 @@ require_once __DIR__ . '/includes/funciones.php';
 iniciar_sesion();
 $usuario = requerir_admin();
 
-$sectores = ['Industrial', 'Comercial', 'Residencial'];
-$escalas = ['Grande', 'Mediano', 'Pequeño'];
-
 $buscar = static function (string $folio, int $id): ?array {
     if ($folio !== '') {
         return obtener_solicitud_por_folio($folio);
@@ -35,17 +32,10 @@ if ($solicitud === null) {
 }
 
 $estado_actual = (string) $solicitud['estado'];
-$permitidos = estados_permitidos($estado_actual, 'Administrador');
+$permitidos = estados_permitidos($estado_actual);
 $errores = [];
 
 $datos = [
-    'nombre_contacto' => (string) $solicitud['nombre_contacto'],
-    'telefono_contacto' => formatear_telefono($solicitud['telefono_contacto']),
-    'sector' => (string) $solicitud['sector'],
-    'escala' => (string) $solicitud['escala'],
-    'id_servicio' => (string) $solicitud['id_servicio'],
-    'descripcion' => (string) $solicitud['descripcion'],
-    'ubicacion' => (string) $solicitud['ubicacion'],
     'estado' => '',
     'fecha_visita' => !empty($solicitud['fecha_visita']) ? date('Y-m-d\TH:i', (int) strtotime((string) $solicitud['fecha_visita'])) : '',
     'notas_internas' => (string) ($solicitud['notas_internas'] ?? ''),
@@ -60,7 +50,7 @@ if ($es_post) {
     $estado_enviado = $datos['estado'] !== '' ? $datos['estado'] : $estado_actual;
     $resultado = actualizar_solicitud(
         (int) $solicitud['id_solicitud'],
-        array_merge($datos, ['estado' => $estado_enviado, 'id_servicio' => (int) $datos['id_servicio']])
+        array_merge($datos, ['estado' => $estado_enviado])
     );
     if ($resultado['ok']) {
         flash_establecer('exito', 'Solicitud ' . $solicitud['folio'] . ' actualizada.');
@@ -70,22 +60,11 @@ if ($es_post) {
     $errores = $resultado['errores'];
 }
 
-$servicios = listar_servicios(true);
-$ids_servicio = array_map(static fn(array $s): string => (string) $s['id_servicio'], $servicios);
-if (!in_array((string) $solicitud['id_servicio'], $ids_servicio, true)) {
-    // Servicio desactivado después del alta: se conserva como opción para no perder el dato.
-    array_unshift($servicios, ['id_servicio' => $solicitud['id_servicio'], 'nombre' => $solicitud['servicio_nombre']]);
-}
-
 $prioridad = (int) $solicitud['prioridad'];
-if (in_array($datos['sector'], $sectores, true) && in_array($datos['escala'], $escalas, true)) {
-    $prioridad = calcular_prioridad($datos['sector'], $datos['escala']);
-}
 
 $dis = $solo_lectura ? ' disabled' : '';
 $clase_estado = static fn(string $estado): string => str_replace(['é', ' '], ['e', '-'], mb_strtolower($estado));
 $folio_url = rawurlencode((string) $solicitud['folio']);
-$cuenta_texto = !empty($solicitud['usuario_nombre']) ? 'Cuenta: ' . $solicitud['usuario_nombre'] : 'Sin cuenta vinculada';
 
 $titulo = ($solo_lectura ? 'Solicitud ' : 'Editar solicitud ') . $solicitud['folio'];
 $pagina_activa = 'solicitudes';
@@ -100,7 +79,7 @@ require __DIR__ . '/includes/nav.php';
     <header class="drawer-panel__encabezado">
       <div>
         <h1 class="drawer-panel__titulo" id="drawer-titulo"><?= $solo_lectura ? 'Solicitud' : 'Editar solicitud' ?> <?= e($solicitud['folio']) ?></h1>
-        <p class="drawer-panel__meta">Registrada <?= e(formatear_fecha($solicitud['fecha_registro'])) ?> · Canal: <?= e($solicitud['canal_origen']) ?> · <?= e($cuenta_texto) ?></p>
+        <p class="drawer-panel__meta">Registrada <?= e(formatear_fecha($solicitud['fecha_registro'])) ?> · Cuenta: <?= e($solicitud['usuario_nombre']) ?></p>
       </div>
       <a href="index.php" class="drawer-panel__cerrar" aria-label="Cerrar">×</a>
     </header>
@@ -116,81 +95,17 @@ require __DIR__ . '/includes/nav.php';
 
       <section class="drawer-seccion">
         <h2 class="drawer-seccion__titulo">Contacto para la visita</h2>
-        <div class="campos-grid campos-grid--2">
-          <div class="campo <?= isset($errores['nombre_contacto']) ? 'campo--error' : '' ?>">
-            <label class="campo__etiqueta" for="nombre_contacto">Nombre*</label>
-            <input class="campo__control" type="text" id="nombre_contacto" name="nombre_contacto" maxlength="100"
-                   value="<?= e($datos['nombre_contacto']) ?>" data-requerido="true"<?= $dis ?>>
-            <?php if (isset($errores['nombre_contacto'])): ?>
-              <span class="campo__error">! <?= e($errores['nombre_contacto']) ?></span>
-            <?php endif; ?>
-          </div>
-          <div class="campo <?= isset($errores['telefono_contacto']) ? 'campo--error' : '' ?>">
-            <label class="campo__etiqueta" for="telefono_contacto">Teléfono*</label>
-            <input class="campo__control" type="tel" id="telefono_contacto" name="telefono_contacto"
-                   value="<?= e($datos['telefono_contacto']) ?>" data-requerido="true" data-tipo="telefono"<?= $dis ?>>
-            <?php if (isset($errores['telefono_contacto'])): ?>
-              <span class="campo__error">! <?= e($errores['telefono_contacto']) ?></span>
-            <?php endif; ?>
-          </div>
-        </div>
+        <p><strong>Nombre:</strong> <?= e($solicitud['usuario_nombre']) ?></p>
+        <p><strong>Teléfono:</strong> <?= e(formatear_telefono($solicitud['usuario_telefono'])) ?></p>
+        <p><strong>Correo:</strong> <?= e($solicitud['usuario_correo']) ?></p>
       </section>
 
       <section class="drawer-seccion">
         <h2 class="drawer-seccion__titulo">Trabajo</h2>
-        <div class="campos-grid campos-grid--2">
-          <div class="campo <?= isset($errores['sector']) ? 'campo--error' : '' ?>">
-            <label class="campo__etiqueta" for="sector">Tipo de lugar*</label>
-            <select class="campo__control" id="sector" name="sector" data-requerido="true"<?= $dis ?>>
-              <?php foreach ($sectores as $opcion): ?>
-                <option value="<?= e($opcion) ?>" <?= $datos['sector'] === $opcion ? 'selected' : '' ?>><?= e($opcion) ?></option>
-              <?php endforeach; ?>
-            </select>
-            <?php if (isset($errores['sector'])): ?>
-              <span class="campo__error">! <?= e($errores['sector']) ?></span>
-            <?php endif; ?>
-          </div>
-          <div class="campo <?= isset($errores['escala']) ? 'campo--error' : '' ?>">
-            <label class="campo__etiqueta" for="escala">Tamaño*</label>
-            <select class="campo__control" id="escala" name="escala" data-requerido="true"<?= $dis ?>>
-              <?php foreach ($escalas as $opcion): ?>
-                <option value="<?= e($opcion) ?>" <?= $datos['escala'] === $opcion ? 'selected' : '' ?>><?= e($opcion) ?></option>
-              <?php endforeach; ?>
-            </select>
-            <?php if (isset($errores['escala'])): ?>
-              <span class="campo__error">! <?= e($errores['escala']) ?></span>
-            <?php endif; ?>
-          </div>
-        </div>
-
-        <div class="campo <?= isset($errores['id_servicio']) ? 'campo--error' : '' ?>">
-          <label class="campo__etiqueta" for="id_servicio">Servicio*</label>
-          <select class="campo__control" id="id_servicio" name="id_servicio" data-requerido="true"<?= $dis ?>>
-            <?php foreach ($servicios as $servicio): ?>
-              <option value="<?= e($servicio['id_servicio']) ?>" <?= $datos['id_servicio'] === (string) $servicio['id_servicio'] ? 'selected' : '' ?>><?= e($servicio['nombre']) ?></option>
-            <?php endforeach; ?>
-          </select>
-          <?php if (isset($errores['id_servicio'])): ?>
-            <span class="campo__error">! <?= e($errores['id_servicio']) ?></span>
-          <?php endif; ?>
-        </div>
-
-        <div class="campo <?= isset($errores['descripcion']) ? 'campo--error' : '' ?>">
-          <label class="campo__etiqueta" for="descripcion">Descripción*</label>
-          <textarea class="campo__control" id="descripcion" name="descripcion" rows="4" data-requerido="true"<?= $dis ?>><?= e($datos['descripcion']) ?></textarea>
-          <?php if (isset($errores['descripcion'])): ?>
-            <span class="campo__error">! <?= e($errores['descripcion']) ?></span>
-          <?php endif; ?>
-        </div>
-
-        <div class="campo <?= isset($errores['ubicacion']) ? 'campo--error' : '' ?>">
-          <label class="campo__etiqueta" for="ubicacion">Ubicación*</label>
-          <input class="campo__control" type="text" id="ubicacion" name="ubicacion" maxlength="200"
-                 value="<?= e($datos['ubicacion']) ?>" data-requerido="true"<?= $dis ?>>
-          <?php if (isset($errores['ubicacion'])): ?>
-            <span class="campo__error">! <?= e($errores['ubicacion']) ?></span>
-          <?php endif; ?>
-        </div>
+        <p><strong>Tipo de lugar:</strong> <?= e($solicitud['sector']) ?> · <strong>Tamaño:</strong> <?= e($solicitud['escala']) ?></p>
+        <p><strong>Servicio:</strong> <?= e($solicitud['servicio_nombre']) ?></p>
+        <p><strong>Descripción:</strong> <?= e($solicitud['descripcion']) ?></p>
+        <p><strong>Ubicación:</strong> <?= e($solicitud['ubicacion']) ?></p>
       </section>
 
       <section class="drawer-seccion">

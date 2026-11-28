@@ -17,7 +17,6 @@ if ($usuario['rol'] !== 'Administrador') {
 
 $estados = ['Enviada', 'En revisión', 'Visita agendada', 'Presupuesto', 'Aceptada', 'En progreso', 'Finalizada', 'Rechazada', 'Cancelada'];
 $sectores = ['Industrial', 'Comercial', 'Residencial'];
-$canales = ['Web', 'WhatsApp', 'Llamada', 'Recomendación'];
 
 $entrada = static fn(string $clave): string => is_string($_GET[$clave] ?? null) ? trim($_GET[$clave]) : '';
 $en_lista = static fn(string $valor, array $permitidos): string => in_array($valor, $permitidos, true) ? $valor : '';
@@ -26,7 +25,6 @@ $filtros = [
     'q' => $entrada('q'),
     'estado' => $en_lista($entrada('estado'), $estados),
     'sector' => $en_lista($entrada('sector'), $sectores),
-    'canal' => $en_lista($entrada('canal'), $canales),
     'desde' => normalizar_fecha_entrada($entrada('desde')) ?? '',
     'hasta' => normalizar_fecha_entrada($entrada('hasta')) ?? '',
 ];
@@ -61,9 +59,6 @@ require __DIR__ . '/includes/nav.php';
     <h1 class="encabezado-pagina__titulo">Gestión de solicitudes</h1>
     <p class="encabezado-pagina__subtitulo"><?= e(formatear_fecha_encabezado()) ?></p>
   </div>
-  <div class="encabezado-pagina__acciones">
-    <a href="crear.php" class="btn btn--primario">Nueva solicitud</a>
-  </div>
 </div>
 
 <form class="barra-filtros" method="get" action="index.php">
@@ -88,15 +83,6 @@ require __DIR__ . '/includes/nav.php';
         <option value="">Todos</option>
         <?php foreach ($sectores as $opcion): ?>
           <option value="<?= e($opcion) ?>" <?= $filtros['sector'] === $opcion ? 'selected' : '' ?>><?= e($opcion) ?></option>
-        <?php endforeach; ?>
-      </select>
-    </div>
-    <div class="campo campo--inline">
-      <label class="campo__etiqueta" for="f-canal">Canal</label>
-      <select class="campo__control" id="f-canal" name="canal">
-        <option value="">Todos</option>
-        <?php foreach ($canales as $opcion): ?>
-          <option value="<?= e($opcion) ?>" <?= $filtros['canal'] === $opcion ? 'selected' : '' ?>><?= e($opcion) ?></option>
         <?php endforeach; ?>
       </select>
     </div>
@@ -126,7 +112,7 @@ require __DIR__ . '/includes/nav.php';
 <?php if ($lista['items'] === []): ?>
   <div class="estado-vacio">
     <p class="estado-vacio__titulo">No se encontraron solicitudes</p>
-    <p class="estado-vacio__texto">Ajuste los filtros de búsqueda o registre una nueva solicitud.</p>
+    <p class="estado-vacio__texto">Ajuste los filtros de búsqueda.</p>
   </div>
 <?php else: ?>
   <div class="tabla-contenedor">
@@ -139,7 +125,6 @@ require __DIR__ . '/includes/nav.php';
           <th>Prioridad</th>
           <th>Servicio</th>
           <th>Estado</th>
-          <th>Canal</th>
           <th>Registro</th>
           <th>Visita</th>
           <th>Acciones</th>
@@ -150,12 +135,11 @@ require __DIR__ . '/includes/nav.php';
           <?php $folio_url = rawurlencode((string) $s['folio']); ?>
           <tr>
             <td class="texto-mono texto-negrita" data-label="Folio"><?= e($s['folio']) ?></td>
-            <td data-label="Cliente"><?= e($s['cliente_mostrar'] ?? $s['nombre_contacto']) ?></td>
+            <td data-label="Cliente"><?= e($s['usuario_nombre']) ?></td>
             <td data-label="Lugar · tamaño"><?= e($s['sector']) ?><span class="tabla-datos__sublinea"><?= e($s['escala']) ?></span></td>
             <td data-label="Prioridad"><span class="badge-prioridad badge-prioridad--<?= e(mb_strtolower(nivel_prioridad((int) $s['prioridad']))) ?>"><?= e(formatear_prioridad((int) $s['prioridad'])) ?></span></td>
             <td data-label="Servicio"><?= e($s['servicio_nombre']) ?></td>
             <td data-label="Estado"><span class="badge-estado badge-estado--<?= e($clase_estado((string) $s['estado'])) ?>"><?= e($s['estado']) ?></span></td>
-            <td data-label="Canal"><?= e($s['canal_origen']) ?></td>
             <td data-label="Registro"><?= e(formatear_fecha_corta($s['fecha_registro'])) ?></td>
             <td data-label="Visita"><?= e(formatear_fecha_corta($s['fecha_visita'], true)) ?></td>
             <td class="tabla-datos__acciones">

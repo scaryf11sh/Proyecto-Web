@@ -41,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $nuevo_estado = $nuevos_estados[$accion];
-    $resultado = cambiar_estado($id, $nuevo_estado, 'Administrador');
+    $resultado = cambiar_estado($id, $nuevo_estado);
     if ($resultado['ok']) {
         flash_establecer('exito', 'Solicitud ' . $folio . ' cambiada a ' . $nuevo_estado . '.');
         header('Location: index.php');
@@ -66,7 +66,7 @@ if ($solicitud === null) {
     exit;
 }
 
-$permitidos = estados_permitidos((string) $solicitud['estado'], 'Administrador');
+$permitidos = estados_permitidos((string) $solicitud['estado']);
 
 $titulo = 'Eliminar solicitud';
 $pagina_activa = 'solicitudes';
@@ -79,7 +79,7 @@ require __DIR__ . '/includes/nav.php';
 <div class="dialogo-contenedor">
   <section class="dialogo-tarjeta" role="dialog" aria-labelledby="dialogo-titulo">
     <h1 class="dialogo-tarjeta__titulo" id="dialogo-titulo">Eliminar solicitud</h1>
-    <p class="dialogo-tarjeta__destacado"><?= e($solicitud['folio']) ?> · <?= e($solicitud['cliente_mostrar']) ?></p>
+    <p class="dialogo-tarjeta__destacado"><?= e($solicitud['folio']) ?> · <?= e($solicitud['usuario_nombre']) ?></p>
     <p class="dialogo-tarjeta__texto">
       Esta acción no se puede deshacer. Si la solicitud no procede, conviene cambiar su estado a Rechazada o Cancelada para conservar el registro.
     </p>
