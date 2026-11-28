@@ -13,7 +13,6 @@ if (usuario_actual() !== null) {
 $errores = [];
 $datos = [
     'nombre' => '',
-    'empresa' => '',
     'correo' => '',
     'telefono' => '',
     'aviso_privacidad' => '',
@@ -58,15 +57,6 @@ require __DIR__ . '/includes/nav.php';
              autocomplete="name" value="<?= e($datos['nombre']) ?>" data-requerido="true">
       <?php if (isset($errores['nombre'])): ?>
         <span class="campo__error">! <?= e($errores['nombre']) ?></span>
-      <?php endif; ?>
-    </div>
-
-    <div class="campo <?= isset($errores['empresa']) ? 'campo--error' : '' ?>">
-      <label class="campo__etiqueta" for="empresa">Empresa (opcional)</label>
-      <input class="campo__control" type="text" id="empresa" name="empresa" maxlength="100"
-             autocomplete="organization" placeholder="Nombre de la empresa" value="<?= e($datos['empresa']) ?>">
-      <?php if (isset($errores['empresa'])): ?>
-        <span class="campo__error">! <?= e($errores['empresa']) ?></span>
       <?php endif; ?>
     </div>
 

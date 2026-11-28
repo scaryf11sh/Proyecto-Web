@@ -84,12 +84,20 @@ function requerir_admin(string $ruta_login = 'login.php', string $ruta_panel_cli
     return $usuario;
 }
 
+function requerir_cliente(string $ruta_login = 'login.php', string $ruta_admin = 'index.php'): array
+{
+    $usuario = requerir_login($ruta_login);
+    if (!es_cliente()) {
+        auth_redirigir($ruta_admin);
+    }
+    return $usuario;
+}
+
 function guardar_sesion_usuario(array $fila): array
 {
     $usuario = [
         'id_usuario' => (int) $fila['id_usuario'],
         'nombre' => (string) $fila['nombre'],
-        'empresa' => $fila['empresa'] !== null ? (string) $fila['empresa'] : null,
         'correo' => (string) $fila['correo'],
         'telefono' => (string) $fila['telefono'],
         'rol' => (string) $fila['rol'],
@@ -108,7 +116,7 @@ function intentar_login(string $correo, string $contrasena): array
     $fallo = ['ok' => false, 'error' => 'Correo o contraseña incorrectos.', 'usuario' => null];
 
     $stmt = db()->prepare(
-        'SELECT id_usuario, nombre, empresa, correo, telefono, contrasena, rol
+        'SELECT id_usuario, nombre, correo, telefono, contrasena, rol
          FROM usuario WHERE correo = :correo LIMIT 1'
     );
     $stmt->execute([':correo' => trim($correo)]);
@@ -125,7 +133,7 @@ function intentar_login(string $correo, string $contrasena): array
     return ['ok' => true, 'error' => null, 'usuario' => $usuario];
 }
 
-function registrar_cliente(array $datos): array
+function crear_usuario(array $datos, string $rol): array
 {
     iniciar_sesion();
     $errores = validar_registro($datos);
@@ -133,23 +141,20 @@ function registrar_cliente(array $datos): array
         return ['ok' => false, 'errores' => $errores, 'id_usuario' => null];
     }
 
-    $empresa = trim((string) ($datos['empresa'] ?? ''));
     $fila = [
         'nombre' => trim((string) $datos['nombre']),
-        'empresa' => $empresa !== '' ? $empresa : null,
         'correo' => trim((string) $datos['correo']),
         'telefono' => limpiar_telefono((string) $datos['telefono']),
-        'rol' => 'Cliente',
+        'rol' => $rol,
     ];
 
     try {
         $stmt = db()->prepare(
-            'INSERT INTO usuario (nombre, empresa, correo, telefono, contrasena, rol)
-             VALUES (:nombre, :empresa, :correo, :telefono, :contrasena, :rol)'
+            'INSERT INTO usuario (nombre, correo, telefono, contrasena, rol)
+             VALUES (:nombre, :correo, :telefono, :contrasena, :rol)'
         );
         $stmt->execute([
             ':nombre' => $fila['nombre'],
-            ':empresa' => $fila['empresa'],
             ':correo' => $fila['correo'],
             ':telefono' => $fila['telefono'],
             ':contrasena' => password_hash((string) $datos['contrasena'], PASSWORD_BCRYPT),
@@ -163,9 +168,17 @@ function registrar_cliente(array $datos): array
         throw $ex;
     }
 
-    $fila['id_usuario'] = (int) db()->lastInsertId();
-    guardar_sesion_usuario($fila);
-    return ['ok' => true, 'errores' => [], 'id_usuario' => $fila['id_usuario']];
+    return ['ok' => true, 'errores' => [], 'id_usuario' => (int) db()->lastInsertId(), 'fila' => $fila];
+}
+
+function registrar_cliente(array $datos): array
+{
+    $resultado = crear_usuario($datos, 'Cliente');
+    if ($resultado['ok']) {
+        $resultado['fila']['id_usuario'] = $resultado['id_usuario'];
+        guardar_sesion_usuario($resultado['fila']);
+    }
+    return $resultado;
 }
 
 function cerrar_sesion(): void
